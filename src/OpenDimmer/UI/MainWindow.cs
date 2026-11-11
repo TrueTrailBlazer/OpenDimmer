@@ -57,6 +57,7 @@ namespace OpenDimmer.UI
         private static readonly MediaColor ColSurfaceCanvas = MediaColor.FromRgb(24, 27, 32);       // #181B20
         private static readonly MediaColor ColSurfaceCard = MediaColor.FromRgb(34, 39, 46);         // #22272E
         private static readonly MediaColor ColSurfaceSubCard = MediaColor.FromRgb(22, 25, 30);      // #16191E
+        private static readonly MediaColor ColSurfacePopup = MediaColor.FromRgb(26, 29, 35);        // #1A1D23
         private static readonly MediaColor ColSurfaceMaster = MediaColor.FromRgb(31, 41, 55);       // #1F2937
         private static readonly MediaColor ColSurfaceInput = MediaColor.FromRgb(20, 23, 28);        // #14171C
         private static readonly MediaColor ColSurfaceTrack = MediaColor.FromRgb(17, 20, 24);        // #111418
@@ -68,23 +69,35 @@ namespace OpenDimmer.UI
         private static readonly MediaColor ColPrimaryContainer = MediaColor.FromRgb(77, 142, 255);  // #4D8EFF
         private static readonly MediaColor ColOnPrimary = MediaColor.FromRgb(0, 40, 93);            // #00285D
         private static readonly MediaColor ColSecondary = MediaColor.FromRgb(255, 185, 95);         // #FFB95F
+        private static readonly MediaColor ColEmber = MediaColor.FromRgb(240, 100, 73);             // #F06449
+        private static readonly MediaColor ColSepia = MediaColor.FromRgb(226, 176, 97);             // #E2B061
         private static readonly MediaColor ColTextPrimary = MediaColor.FromRgb(243, 244, 246);      // #F3F4F6
         private static readonly MediaColor ColTextSecondary = MediaColor.FromRgb(156, 163, 175);    // #9CA3AF
         private static readonly MediaColor ColOutlineVariant = MediaColor.FromRgb(66, 71, 84);      // #424754
         private static readonly MediaColor ColErrorContainer = MediaColor.FromRgb(147, 0, 10);      // #93000A
 
-        // Crisp Material Symbols Vector Geometries
-        private const string SvgBrightnessMedium = "M12,18V6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,1L14.39,3.42C13.65,3.15 12.84,3 12,3C11.16,3 10.35,3.15 9.61,3.42L12,1M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,6.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,23L9.59,20.56C10.33,20.83 11.14,21 12,21C12.86,21 13.67,20.83 14.41,20.56L12,23Z";
+        // Official Google Material Symbols Outlined Vector Paths
+        private const string SvgBrightnessMedium = "M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69ZM18,14.48V18H14.48L12,20.48L9.52,18H6V14.48L3.52,12L6,9.52V6H9.52L12,3.52L14.48,6H18V9.52L20.48,12L18,14.48ZM12,6.5V17.5C15.03,17.5 17.5,15.03 17.5,12C17.5,8.97 15.03,6.5 12,6.5Z";
+        private const string SvgWbIncandescent = "M3.55,19.09L4.96,20.5L6.75,18.7L5.34,17.29L3.55,19.09ZM11,20H13V23H11V20ZM1,11H4V13H1V11ZM15,6.86V2.05H9V6.86C7.21,7.9 6,9.83 6,12.05C6,15.36 8.69,18.05 12,18.05C15.31,18.05 18,15.36 18,12.05C18,9.83 16.79,7.9 15,6.86ZM12,16.05C9.79,16.05 8,14.26 8,12.05C8,10.57 8.81,9.28 10,8.59V4.05H14V8.59C15.19,9.28 16,10.57 16,12.05C16,14.26 14.21,16.05 12,16.05ZM20,11H23V13H20V11ZM17.24,18.71L19.03,20.51L20.44,19.1L18.64,17.31L17.24,18.71Z";
         private const string SvgLink = "M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z";
         private const string SvgNightlight = "M14,2C15.82,2 17.53,2.5 19,3.35C16.06,5.08 14,8.3 14,12C14,15.7 16.06,18.92 19,20.65C17.53,21.5 15.82,22 14,22A10,10 0 0,1 4,12A10,10 0 0,1 14,2Z";
         private const string SvgDesktop = "M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2M21,16H3V4H21V16Z";
         private const string SvgSunSmall = "M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,6.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,22L9.59,18.56C10.33,18.83 11.14,19 12,19C12.86,19 13.67,18.83 14.41,18.56L12,22Z";
         private const string SvgSliders = "M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z";
         private const string SvgChevronDown = "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z";
+        private const string SvgChevronUp = "M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z";
+        private const string SvgCheck = "M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z";
 
         private static readonly string[] TintCodes = new[] { "000000", "2B1300", "330D00", "1F190D" };
-        private static readonly string[] TintBadges = new[] { "Native", "4500K", "3500K", "Sepia" };
+        private static readonly string[] TintBadges = new[] { "Native", "4500K", "2200K", "3200K" };
         private static readonly string[] TintDropdownLabels = new[] { "Neutral Black", "Warm Amber", "Deep Ember", "Soft Sepia" };
+        private static readonly string[] TintDropdownSubtitles = new[]
+        {
+            "Default • 6500K",
+            "Night Light • 4500K",
+            "Low Blue • 2200K",
+            "Reading • 3200K"
+        };
 
         private readonly AppSettings _settings;
         private readonly SettingsService _settingsService;
@@ -211,6 +224,17 @@ namespace OpenDimmer.UI
             };
         }
 
+        private static MediaColor GetTintPresetDotColor(int index)
+        {
+            switch (index)
+            {
+                case 1: return ColSecondary;
+                case 2: return ColEmber;
+                case 3: return ColSepia;
+                default: return ColBorderSubtle;
+            }
+        }
+
         private void InstallCustomScrollbarStyle()
         {
             const string scrollBarXaml = @"
@@ -249,7 +273,6 @@ namespace OpenDimmer.UI
 
         private void BuildUserInterface()
         {
-            // Rounded 12px outer frame matching Stitch window shell
             var windowFrame = new Border
             {
                 Background = new SolidColorBrush(ColSurfaceCanvas),
@@ -314,15 +337,15 @@ namespace OpenDimmer.UI
                 }
             };
 
-            // Left: Vector Sun/Starburst + OpenDimmer
+            // Left: Official Material Symbols brightness_medium Octagram + OpenDimmer
             var brandStack = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            var brandIcon = CreateVectorIcon(SvgBrightnessMedium, ColPrimary, 16, 16);
-            brandIcon.Margin = new Thickness(0, 0, 6, 0);
+            var brandIcon = CreateVectorIcon(SvgBrightnessMedium, ColPrimary, 17, 17);
+            brandIcon.Margin = new Thickness(0, 0, 7, 0);
 
             var titleText = new TextBlock
             {
@@ -484,7 +507,6 @@ namespace OpenDimmer.UI
             Grid.SetRow(_channelsGrid, 0);
             grid.Children.Add(_channelsGrid);
 
-            // Bottom Utility & Quick Preset Strip (Borderless elevated surface #22272E matching Stitch)
             var bottomBar = new Border
             {
                 Background = new SolidColorBrush(ColSurfaceCard),
@@ -650,7 +672,6 @@ namespace OpenDimmer.UI
                 Value = Math.Max(0, Math.Min(90, dimValue))
             };
 
-            // Borderless card surface (#1F2937 for Master, #22272E for Monitors)
             var card = new Border
             {
                 Background = new SolidColorBrush(isMaster ? ColSurfaceMaster : ColSurfaceCard),
@@ -664,7 +685,6 @@ namespace OpenDimmer.UI
 
             var cardContainer = new Grid();
 
-            // Subtle top-left radial glow on Master card (matching Stitch)
             if (isMaster)
             {
                 var glow = new Ellipse
@@ -687,7 +707,6 @@ namespace OpenDimmer.UI
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // 1. Top Header (Badge + Crisp SVG Icon + Title + Subtitle)
             var headerStack = new StackPanel
             {
                 Orientation = Orientation.Vertical,
@@ -781,7 +800,7 @@ namespace OpenDimmer.UI
             Grid.SetRow(headerStack, 0);
             rootGrid.Children.Add(headerStack);
 
-            // 2. Center Tactile Vertical Slider (Ticks positioned right next to slider track)
+            // Center Tactile Vertical Slider
             var sliderArea = new Grid
             {
                 Margin = new Thickness(0, 8, 0, 8),
@@ -884,7 +903,7 @@ namespace OpenDimmer.UI
             Grid.SetRow(sliderArea, 1);
             rootGrid.Children.Add(sliderArea);
 
-            // 3. Bottom Numeric Pill & Metric Badge
+            // Bottom Numeric Pill & Metric Badge
             var bottomStack = new StackPanel
             {
                 Orientation = Orientation.Vertical,
@@ -920,7 +939,6 @@ namespace OpenDimmer.UI
 
             if (isMaster)
             {
-                // Master bottom metric: Sun SVG icon + "ALL" (no pill background, matching Stitch)
                 var masterMetric = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
@@ -943,7 +961,6 @@ namespace OpenDimmer.UI
             }
             else
             {
-                // Monitor bottom metric: rounded pill (#14171C) with dot + temperature/Native
                 var metricPill = new Border
                 {
                     Background = new SolidColorBrush(ColSurfaceInput),
@@ -1101,7 +1118,6 @@ namespace OpenDimmer.UI
 
             if (visual.IsMaster)
             {
-                // Master badge is bright blue (#4D8EFF) when linked, dark (#14171C) when unlinked
                 visual.BadgeBox.Background = new SolidColorBrush(on ? ColPrimaryContainer : ColSurfaceInput);
                 visual.BadgeText.Foreground = new SolidColorBrush(on ? ColOnPrimary : ColTextSecondary);
                 visual.TopRightIconSlot.Content = CreateVectorIcon(SvgLink, on ? ColPrimary : ColTextSecondary, 14, 14);
@@ -1111,22 +1127,23 @@ namespace OpenDimmer.UI
             }
             else
             {
-                // Monitor badge is dark (#14171C) with crisp number (matching Stitch)
                 visual.BadgeBox.Background = new SolidColorBrush(ColSurfaceInput);
                 visual.BadgeText.Foreground = new SolidColorBrush(on ? ColTextPrimary : ColTextSecondary);
 
                 string code = string.IsNullOrEmpty(tintHex) ? "000000" : tintHex.ToUpperInvariant();
                 bool isWarm = code != "000000";
+                int idx = Math.Max(0, Array.IndexOf(TintCodes, code));
+                MediaColor dotCol = isWarm ? GetTintPresetDotColor(idx) : ColPrimaryContainer;
+
                 visual.TopRightIconSlot.Content = isWarm
-                    ? CreateVectorIcon(SvgNightlight, ColSecondary, 13, 13)
+                    ? CreateVectorIcon(SvgNightlight, dotCol, 13, 13)
                     : CreateVectorIcon(SvgDesktop, ColTextSecondary, 13, 13);
 
-                int idx = Array.IndexOf(TintCodes, code);
                 if (visual.MetricDot != null && visual.MetricLabel != null)
                 {
-                    visual.MetricDot.Fill = new SolidColorBrush(isWarm ? ColSecondary : ColPrimaryContainer);
-                    visual.MetricLabel.Text = idx >= 0 ? TintBadges[idx] : "Custom";
-                    visual.MetricLabel.Foreground = new SolidColorBrush(isWarm ? ColSecondary : ColTextSecondary);
+                    visual.MetricDot.Fill = new SolidColorBrush(dotCol);
+                    visual.MetricLabel.Text = TintBadges[idx];
+                    visual.MetricLabel.Foreground = new SolidColorBrush(isWarm ? dotCol : ColTextSecondary);
                 }
             }
 
@@ -1298,7 +1315,7 @@ namespace OpenDimmer.UI
         }
 
         // =====================================================================
-        // SETTINGS VIEW (Exact Stitch Layout from Screenshot 2)
+        // SETTINGS VIEW (Exact Stitch Layout + Custom WPF Tint Preset Popup)
         // =====================================================================
         private ScrollViewer BuildSettingsView()
         {
@@ -1331,7 +1348,7 @@ namespace OpenDimmer.UI
                 Orientation = Orientation.Horizontal,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            var tintHeaderIcon = CreateVectorIcon(SvgSunSmall, ColSecondary, 14, 14);
+            var tintHeaderIcon = CreateVectorIcon(SvgWbIncandescent, ColSecondary, 15, 15);
             tintHeaderIcon.Margin = new Thickness(0, 0, 6, 0);
             tintHeaderRow.Children.Add(tintHeaderIcon);
             tintHeaderRow.Children.Add(new TextBlock
@@ -1487,7 +1504,6 @@ namespace OpenDimmer.UI
                 false,
                 val => { _settings.AutoRun = val; AutoRunService.SetAutoRun(val); UpdateConfiguredCounter(); _settingsService.Save(_settings); }));
 
-            // Action Buttons Footer inside Settings
             var actionGrid = new UniformGrid
             {
                 Columns = 2,
@@ -1539,7 +1555,6 @@ namespace OpenDimmer.UI
                 if (cfg.TintIntensity <= 0) cfg.TintIntensity = 60;
                 var hwInfo = DisplayInfoService.GetMonitorInfo(screen, screenId);
 
-                // Inner dark sub-card (#16191E) matching Stitch Settings screenshot
                 var subCard = new Border
                 {
                     Background = new SolidColorBrush(ColSurfaceSubCard),
@@ -1549,8 +1564,6 @@ namespace OpenDimmer.UI
                 };
 
                 var subStack = new StackPanel { Orientation = Orientation.Vertical };
-
-                // Top Row: [Port Badge] [Monitor Name]   <--->   [● Warm Amber ⌄]
                 var topDock = new DockPanel { LastChildFill = false };
 
                 var leftInfo = new StackPanel
@@ -1599,7 +1612,7 @@ namespace OpenDimmer.UI
                     BorderBrush = new SolidColorBrush(ColBorderSubtle),
                     BorderThickness = new Thickness(1),
                     CornerRadius = new CornerRadius(5),
-                    Padding = new Thickness(8, 4, 8, 4),
+                    Padding = new Thickness(9, 4, 9, 4),
                     Cursor = Cursors.Hand
                 };
 
@@ -1611,9 +1624,11 @@ namespace OpenDimmer.UI
 
                 var dropDot = new Ellipse
                 {
-                    Width = 7,
-                    Height = 7,
-                    Fill = new SolidColorBrush(isWarm ? ColSecondary : ColBorderSubtle),
+                    Width = 8,
+                    Height = 8,
+                    Fill = new SolidColorBrush(isWarm ? GetTintPresetDotColor(currentIdx) : ColSurfaceInput),
+                    Stroke = new SolidColorBrush(isWarm ? GetTintPresetDotColor(currentIdx) : ColOutlineVariant),
+                    StrokeThickness = 1.5,
                     Margin = new Thickness(0, 0, 6, 0),
                     VerticalAlignment = VerticalAlignment.Center
                 };
@@ -1625,21 +1640,25 @@ namespace OpenDimmer.UI
                     FontWeight = FontWeights.SemiBold,
                     Foreground = new SolidColorBrush(ColTextPrimary),
                     VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 5, 0)
+                    Margin = new Thickness(0, 0, 6, 0)
                 };
 
-                var dropChev = CreateVectorIcon(SvgChevronDown, ColTextSecondary, 11, 11);
+                var dropChevHolder = new ContentControl
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Content = CreateVectorIcon(SvgChevronDown, ColTextSecondary, 11, 11)
+                };
 
                 dropStack.Children.Add(dropDot);
                 dropStack.Children.Add(dropLabel);
-                dropStack.Children.Add(dropChev);
+                dropStack.Children.Add(dropChevHolder);
                 dropBorder.Child = dropStack;
 
                 DockPanel.SetDock(dropBorder, Dock.Right);
                 topDock.Children.Add(dropBorder);
                 subStack.Children.Add(topDock);
 
-                // Bottom Row: [4500K Intensity] [========------] [60%] (Visible when a warm tint is selected)
+                // Bottom Row: [4500K Intensity] [========------] [60%]
                 var intensityGrid = new Grid
                 {
                     Margin = new Thickness(0, 8, 0, 2),
@@ -1660,7 +1679,7 @@ namespace OpenDimmer.UI
                     Text = TintBadges[currentIdx] + " ",
                     FontSize = 10,
                     FontWeight = FontWeights.Bold,
-                    Foreground = new SolidColorBrush(ColSecondary)
+                    Foreground = new SolidColorBrush(GetTintPresetDotColor(currentIdx))
                 };
                 intLabelStack.Children.Add(tempBadgeText);
                 intLabelStack.Children.Add(new TextBlock
@@ -1693,7 +1712,7 @@ namespace OpenDimmer.UI
                 {
                     Height = 5,
                     CornerRadius = new CornerRadius(2.5),
-                    Background = new SolidColorBrush(ColSecondary),
+                    Background = new SolidColorBrush(GetTintPresetDotColor(currentIdx)),
                     HorizontalAlignment = HorizontalAlignment.Left,
                     Width = 0
                 };
@@ -1759,28 +1778,170 @@ namespace OpenDimmer.UI
                     }
                 };
 
-                // Dropdown menu on click
+                // Rich Stitch WPF Popup Dropdown ("TINT PRESET | 4 Modes")
                 dropBorder.MouseLeftButtonDown += (s, e) =>
                 {
-                    var menu = new Forms.ContextMenuStrip
+                    dropChevHolder.Content = CreateVectorIcon(SvgChevronUp, ColTextPrimary, 11, 11);
+
+                    var popup = new Popup
                     {
-                        Renderer = new DarkTrayMenuRenderer(),
-                        ShowImageMargin = false,
-                        ShowCheckMargin = false,
-                        BackColor = DrawingColor.FromArgb(24, 27, 32),
-                        ForeColor = DrawingColor.FromArgb(243, 244, 246)
+                        PlacementTarget = dropBorder,
+                        Placement = PlacementMode.Bottom,
+                        HorizontalOffset = -90,
+                        VerticalOffset = 4,
+                        AllowsTransparency = true,
+                        StaysOpen = false,
+                        PopupAnimation = PopupAnimation.Fade
                     };
+
+                    popup.Closed += (ps, pe) =>
+                    {
+                        dropChevHolder.Content = CreateVectorIcon(SvgChevronDown, ColTextSecondary, 11, 11);
+                    };
+
+                    var popOuter = new Border
+                    {
+                        Width = 224,
+                        Background = new SolidColorBrush(ColSurfacePopup),
+                        BorderBrush = new SolidColorBrush(ColBorderSubtle),
+                        BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(8),
+                        Margin = new Thickness(8),
+                        ClipToBounds = true,
+                        Effect = new DropShadowEffect
+                        {
+                            Color = Colors.Black,
+                            BlurRadius = 14,
+                            ShadowDepth = 4,
+                            Opacity = 0.75
+                        }
+                    };
+
+                    var popStack = new StackPanel { Orientation = Orientation.Vertical };
+
+                    // Popup Header: TINT PRESET  <--->  4 Modes
+                    var popHeader = new DockPanel
+                    {
+                        LastChildFill = false,
+                        Margin = new Thickness(12, 8, 12, 7)
+                    };
+                    var hdrTitle = new TextBlock
+                    {
+                        Text = "TINT PRESET",
+                        FontSize = 9.5,
+                        FontWeight = FontWeights.Bold,
+                        Foreground = new SolidColorBrush(ColTextSecondary)
+                    };
+                    DockPanel.SetDock(hdrTitle, Dock.Left);
+                    popHeader.Children.Add(hdrTitle);
+
+                    var hdrModes = new TextBlock
+                    {
+                        Text = "4 Modes",
+                        FontSize = 9.5,
+                        FontWeight = FontWeights.Bold,
+                        Foreground = new SolidColorBrush(ColSecondary)
+                    };
+                    DockPanel.SetDock(hdrModes, Dock.Right);
+                    popHeader.Children.Add(hdrModes);
+
+                    popStack.Children.Add(popHeader);
+                    popStack.Children.Add(new Border
+                    {
+                        Height = 1,
+                        Background = new SolidColorBrush(ColDivider)
+                    });
+
+                    string activeHex = string.IsNullOrEmpty(cfg.Tint) ? "000000" : cfg.Tint.ToUpperInvariant();
+                    int activeIndex = Math.Max(0, Array.IndexOf(TintCodes, activeHex));
 
                     for (int t = 0; t < TintCodes.Length; t++)
                     {
                         int selIdx = t;
-                        menu.Items.Add(TintDropdownLabels[t] + " (" + TintBadges[t] + ")", null, (ms, me) =>
+                        bool isSelected = t == activeIndex;
+                        MediaColor presetColor = GetTintPresetDotColor(t);
+
+                        var itemBorder = new Border
+                        {
+                            Background = new SolidColorBrush(isSelected ? ColSurfaceCard : Colors.Transparent),
+                            Padding = new Thickness(12, 8, 12, 8),
+                            Cursor = Cursors.Hand
+                        };
+
+                        var itemGrid = new Grid();
+                        itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                        itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                        itemGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                        var itemDot = new Ellipse
+                        {
+                            Width = 10,
+                            Height = 10,
+                            Fill = new SolidColorBrush(t == 0 ? ColSurfaceInput : presetColor),
+                            Stroke = new SolidColorBrush(t == 0 ? ColOutlineVariant : presetColor),
+                            StrokeThickness = 1.5,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Margin = new Thickness(0, 0, 10, 0)
+                        };
+                        Grid.SetColumn(itemDot, 0);
+                        itemGrid.Children.Add(itemDot);
+
+                        var itemTextStack = new StackPanel
+                        {
+                            Orientation = Orientation.Vertical,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+
+                        itemTextStack.Children.Add(new TextBlock
+                        {
+                            Text = TintDropdownLabels[t],
+                            FontSize = 11.5,
+                            FontWeight = FontWeights.Bold,
+                            Foreground = new SolidColorBrush(isSelected ? Colors.White : ColTextPrimary)
+                        });
+
+                        itemTextStack.Children.Add(new TextBlock
+                        {
+                            Text = TintDropdownSubtitles[t],
+                            FontSize = 10,
+                            FontWeight = isSelected ? FontWeights.SemiBold : FontWeights.Normal,
+                            Foreground = new SolidColorBrush(isSelected && t > 0 ? presetColor : ColTextSecondary),
+                            Margin = new Thickness(0, 1, 0, 0)
+                        });
+
+                        Grid.SetColumn(itemTextStack, 1);
+                        itemGrid.Children.Add(itemTextStack);
+
+                        if (isSelected)
+                        {
+                            var checkIcon = CreateVectorIcon(SvgCheck, ColPrimary, 12, 12);
+                            Grid.SetColumn(checkIcon, 2);
+                            itemGrid.Children.Add(checkIcon);
+                        }
+
+                        itemBorder.MouseEnter += (ms, me) =>
+                        {
+                            if (!isSelected)
+                                itemBorder.Background = new SolidColorBrush(ColSurfaceHover);
+                        };
+                        itemBorder.MouseLeave += (ms, me) =>
+                        {
+                            if (!isSelected)
+                                itemBorder.Background = System.Windows.Media.Brushes.Transparent;
+                        };
+
+                        itemBorder.MouseLeftButtonDown += (ms, me) =>
                         {
                             cfg.Tint = TintCodes[selIdx];
-                            bool warmNow = cfg.Tint != "000000";
-                            dropDot.Fill = new SolidColorBrush(warmNow ? ColSecondary : ColBorderSubtle);
+                            bool warmNow = selIdx > 0;
+                            MediaColor newCol = GetTintPresetDotColor(selIdx);
+
+                            dropDot.Fill = new SolidColorBrush(warmNow ? newCol : ColSurfaceInput);
+                            dropDot.Stroke = new SolidColorBrush(warmNow ? newCol : ColOutlineVariant);
                             dropLabel.Text = TintDropdownLabels[selIdx];
                             tempBadgeText.Text = TintBadges[selIdx] + " ";
+                            tempBadgeText.Foreground = new SolidColorBrush(newCol);
+                            barFill.Background = new SolidColorBrush(newCol);
                             intensityGrid.Visibility = warmNow ? Visibility.Visible : Visibility.Collapsed;
                             Dispatcher.BeginInvoke(new Action(updateBarWidth), System.Windows.Threading.DispatcherPriority.Loaded);
 
@@ -1792,11 +1953,18 @@ namespace OpenDimmer.UI
                             UpdateNightSyncDotVisual();
                             _overlayManager.RefreshOverlay(capturedScreenId);
                             _settingsService.Save(_settings);
-                        });
+
+                            popup.IsOpen = false;
+                            me.Handled = true;
+                        };
+
+                        itemBorder.Child = itemGrid;
+                        popStack.Children.Add(itemBorder);
                     }
 
-                    var pt = Forms.Control.MousePosition;
-                    menu.Show(pt);
+                    popOuter.Child = popStack;
+                    popup.Child = popOuter;
+                    popup.IsOpen = true;
                     e.Handled = true;
                 };
 
@@ -1844,7 +2012,6 @@ namespace OpenDimmer.UI
                 Margin = new Thickness(0, 1, 0, 0)
             });
 
-            // Stitch Toggle Switch (36x20px, #4D8EFF when ON, #36393F when OFF)
             bool state = initialValue;
             var switchTrack = new Border
             {
@@ -1986,8 +2153,8 @@ namespace OpenDimmer.UI
         {
             if (_footerStatusText == null) return;
             _footerStatusText.Text = _settings.UseHardwareGamma
-                ? "HYBRID GAMMA + Z-ORDER ACTIVE"
-                : "Z-ORDER GUARD ACTIVE";
+                ? "HYBRID GAMMA + OVERLAY ACTIVE"
+                : "OVERLAY PROTECTION ACTIVE";
         }
 
         private void SwitchView(string view)
