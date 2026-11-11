@@ -1,6 +1,12 @@
-# OpenDimmer
+<p align="center">
+  <img src="assets/icon.png" alt="OpenDimmer Icon" width="112" />
+</p>
 
-**OpenDimmer** is a lightweight, portable, open-source multi-monitor brightness and Night Light (warm tint) controller for Windows 10/11.
+<h1 align="center">OpenDimmer</h1>
+
+<p align="center">
+  <strong>Lightweight, portable, open-source multi-monitor brightness &amp; Night Light (warm tint) controller for Windows 10/11.</strong>
+</p>
 
 ---
 
@@ -42,6 +48,9 @@ For years, the classic freeware utility **Dimmer** (by Nelson Pires) was a popul
 
 ```text
 OpenDimmer/
+├── assets/
+│   ├── app.ico                       # Multi-resolution Windows executable & tray icon (16–256px)
+│   └── icon.png                      # High-resolution OpenDimmer application icon (1024px)
 ├── build.ps1                         # Zero-dependency build script (uses native Windows .NET 4 compiler)
 ├── DESIGN.md                         # UI/UX design system specification
 ├── OpenDimmer.sln                    # Visual Studio Solution
@@ -74,7 +83,7 @@ You can compile **OpenDimmer** on any Windows 10/11 machine without installing e
 .\build.ps1
 ```
 
-The standalone portable executable (~40 KB) will be generated in `dist\OpenDimmer.exe`.
+The standalone portable executable (~200 KB, including multi-resolution icons) will be generated in `dist\OpenDimmer.exe`.
 
 ---
 

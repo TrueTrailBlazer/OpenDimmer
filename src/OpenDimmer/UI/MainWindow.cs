@@ -13,6 +13,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Shell;
 using OpenDimmer.Models;
@@ -176,6 +177,7 @@ namespace OpenDimmer.UI
 
             AutoRunService.SetAutoRun(_settings.AutoRun);
 
+            LoadWindowIcon();
             InstallCustomScrollbarStyle();
             BuildUserInterface();
             BuildSystemTrayIcon();
@@ -214,6 +216,59 @@ namespace OpenDimmer.UI
             _overlayManager.SetControlPanelHandle(hwnd);
             _overlayManager.EnforceAllTopmost();
             NativeMethods.TrimMemoryWorkingSet();
+        }
+
+        private void LoadWindowIcon()
+        {
+            try
+            {
+                using (Stream s = typeof(MainWindow).Assembly.GetManifestResourceStream("OpenDimmer.app.ico"))
+                {
+                    if (s != null)
+                    {
+                        var decoder = new IconBitmapDecoder(s, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                        if (decoder.Frames.Count > 0)
+                        {
+                            Icon = decoder.Frames.OrderByDescending(f => f.PixelWidth).First();
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private FrameworkElement CreateHeaderBrandIcon()
+        {
+            try
+            {
+                using (Stream s = typeof(MainWindow).Assembly.GetManifestResourceStream("OpenDimmer.app.ico"))
+                {
+                    if (s != null)
+                    {
+                        var decoder = new IconBitmapDecoder(s, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                        var frame = decoder.Frames
+                            .OrderByDescending(f => f.PixelWidth <= 64 ? f.PixelWidth : 0)
+                            .FirstOrDefault() ?? decoder.Frames.FirstOrDefault();
+
+                        if (frame != null)
+                        {
+                            var img = new System.Windows.Controls.Image
+                            {
+                                Source = frame,
+                                Width = 20,
+                                Height = 20,
+                                VerticalAlignment = VerticalAlignment.Center,
+                                HorizontalAlignment = HorizontalAlignment.Center
+                            };
+                            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+                            return img;
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            return CreateVectorIcon(SvgBrightnessMedium, ColPrimary, 17, 17);
         }
 
         private static WpfPath CreateVectorIcon(string pathData, MediaColor color, double width, double height)
@@ -361,7 +416,7 @@ namespace OpenDimmer.UI
                 }
             };
 
-            // Left: Official Material Symbols brightness_medium Octagram + OpenDimmer
+            // Left: Official OpenDimmer App Icon + Title
             var brandStack = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
@@ -369,7 +424,7 @@ namespace OpenDimmer.UI
                 Margin = new Thickness(0, 0, 8, 0)
             };
 
-            var brandIcon = CreateVectorIcon(SvgBrightnessMedium, ColPrimary, 17, 17);
+            var brandIcon = CreateHeaderBrandIcon();
             brandIcon.Margin = new Thickness(0, 0, 7, 0);
 
             var titleText = new TextBlock
@@ -2268,6 +2323,18 @@ namespace OpenDimmer.UI
 
         private Icon CreateBrightnessIcon()
         {
+            try
+            {
+                using (Stream s = typeof(MainWindow).Assembly.GetManifestResourceStream("OpenDimmer.app.ico"))
+                {
+                    if (s != null)
+                    {
+                        return new System.Drawing.Icon(s, Forms.SystemInformation.SmallIconSize);
+                    }
+                }
+            }
+            catch { }
+
             using (var bmp = new Bitmap(16, 16))
             using (var g = Graphics.FromImage(bmp))
             {
