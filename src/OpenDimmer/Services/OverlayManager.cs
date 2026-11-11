@@ -80,6 +80,7 @@ namespace OpenDimmer.Services
 
         private void ApplyScreenDimming(OverlayWindow overlay, ScreenSettings cfg)
         {
+            int intensity = cfg.TintIntensity > 0 ? cfg.TintIntensity : 60;
             if (_settings.UseHardwareGamma && cfg.On && cfg.Dim > 0)
             {
                 int hwDim = Math.Min(GammaService.MaxHardwareDimPercent, cfg.Dim);
@@ -87,7 +88,7 @@ namespace OpenDimmer.Services
                 if (hwApplied)
                 {
                     int remainingOverlayDim = Math.Max(0, cfg.Dim - (int)(hwDim * 0.75));
-                    overlay.ApplyDimming(remainingOverlayDim > 0, remainingOverlayDim, cfg.Tint);
+                    overlay.ApplyDimming(remainingOverlayDim > 0, remainingOverlayDim, cfg.Tint, intensity);
                     return;
                 }
             }
@@ -96,7 +97,7 @@ namespace OpenDimmer.Services
                 GammaService.ApplyMonitorGamma(overlay.DeviceName, false, 0, "000000");
             }
 
-            overlay.ApplyDimming(cfg.On, cfg.Dim, cfg.Tint);
+            overlay.ApplyDimming(cfg.On, cfg.Dim, cfg.Tint, intensity);
         }
 
         private Rectangle AdjustBoundsForAutoHideTaskbar(Rectangle screenBounds)

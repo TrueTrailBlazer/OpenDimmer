@@ -12,6 +12,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Shell;
 using OpenDimmer.Models;
@@ -20,6 +21,7 @@ using DrawingColor = System.Drawing.Color;
 using DrawingPen = System.Drawing.Pen;
 using Forms = System.Windows.Forms;
 using MediaColor = System.Windows.Media.Color;
+using WpfPath = System.Windows.Shapes.Path;
 
 namespace OpenDimmer.UI
 {
@@ -27,7 +29,7 @@ namespace OpenDimmer.UI
     {
         public override DrawingColor MenuBorder { get { return DrawingColor.FromArgb(45, 51, 59); } }
         public override DrawingColor MenuItemBorder { get { return DrawingColor.FromArgb(77, 142, 255); } }
-        public override DrawingColor MenuItemSelected { get { return DrawingColor.FromArgb(39, 42, 47); } }
+        public override DrawingColor MenuItemSelected { get { return DrawingColor.FromArgb(39, 44, 52); } }
         public override DrawingColor ToolStripDropDownBackground { get { return DrawingColor.FromArgb(24, 27, 32); } }
         public override DrawingColor ImageMarginGradientBegin { get { return DrawingColor.FromArgb(24, 27, 32); } }
         public override DrawingColor ImageMarginGradientMiddle { get { return DrawingColor.FromArgb(24, 27, 32); } }
@@ -44,22 +46,24 @@ namespace OpenDimmer.UI
         {
             e.TextColor = e.Item.Selected
                 ? DrawingColor.FromArgb(243, 244, 246)
-                : DrawingColor.FromArgb(156, 163, 175);
+                : DrawingColor.FromArgb(194, 198, 214);
             base.OnRenderItemText(e);
         }
     }
 
     public sealed class MainWindow : Window
     {
-        // Stitch Design Tokens
+        // Exact Google Stitch Color Palette
         private static readonly MediaColor ColSurfaceCanvas = MediaColor.FromRgb(24, 27, 32);       // #181B20
         private static readonly MediaColor ColSurfaceCard = MediaColor.FromRgb(34, 39, 46);         // #22272E
+        private static readonly MediaColor ColSurfaceSubCard = MediaColor.FromRgb(22, 25, 30);      // #16191E
         private static readonly MediaColor ColSurfaceMaster = MediaColor.FromRgb(31, 41, 55);       // #1F2937
         private static readonly MediaColor ColSurfaceInput = MediaColor.FromRgb(20, 23, 28);        // #14171C
         private static readonly MediaColor ColSurfaceTrack = MediaColor.FromRgb(17, 20, 24);        // #111418
+        private static readonly MediaColor ColSurfaceSwitchOff = MediaColor.FromRgb(54, 57, 63);    // #36393F
         private static readonly MediaColor ColSurfaceHover = MediaColor.FromRgb(39, 42, 47);        // #272A2F
         private static readonly MediaColor ColBorderSubtle = MediaColor.FromRgb(45, 51, 59);        // #2D333B
-        private static readonly MediaColor ColBorderMaster = MediaColor.FromArgb(90, 59, 130, 246); // #3B82F659
+        private static readonly MediaColor ColDivider = MediaColor.FromRgb(42, 47, 55);             // #2A2F37
         private static readonly MediaColor ColPrimary = MediaColor.FromRgb(173, 198, 255);          // #ADC6FF
         private static readonly MediaColor ColPrimaryContainer = MediaColor.FromRgb(77, 142, 255);  // #4D8EFF
         private static readonly MediaColor ColOnPrimary = MediaColor.FromRgb(0, 40, 93);            // #00285D
@@ -69,15 +73,18 @@ namespace OpenDimmer.UI
         private static readonly MediaColor ColOutlineVariant = MediaColor.FromRgb(66, 71, 84);      // #424754
         private static readonly MediaColor ColErrorContainer = MediaColor.FromRgb(147, 0, 10);      // #93000A
 
+        // Crisp Material Symbols Vector Geometries
+        private const string SvgBrightnessMedium = "M12,18V6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,1L14.39,3.42C13.65,3.15 12.84,3 12,3C11.16,3 10.35,3.15 9.61,3.42L12,1M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,6.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,23L9.59,20.56C10.33,20.83 11.14,21 12,21C12.86,21 13.67,20.83 14.41,20.56L12,23Z";
+        private const string SvgLink = "M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z";
+        private const string SvgNightlight = "M14,2C15.82,2 17.53,2.5 19,3.35C16.06,5.08 14,8.3 14,12C14,15.7 16.06,18.92 19,20.65C17.53,21.5 15.82,22 14,22A10,10 0 0,1 4,12A10,10 0 0,1 14,2Z";
+        private const string SvgDesktop = "M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2M21,16H3V4H21V16Z";
+        private const string SvgSunSmall = "M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,5.42C13.65,5.15 12.84,5 12,5C11.16,5 10.35,5.15 9.61,5.42L12,2M3.34,7L7.5,6.65C6.9,7.16 6.36,7.78 5.94,8.5C5.5,9.24 5.25,10 5.11,10.79L3.34,7M3.36,17L5.12,13.23C5.26,14 5.53,14.78 5.95,15.5C6.37,16.24 6.91,16.86 7.5,17.37L3.36,17M20.65,7L18.88,10.79C18.74,10 18.47,9.23 18.05,8.5C17.63,7.78 17.1,7.15 16.5,6.64L20.65,7M20.64,17L16.5,17.36C17.09,16.85 17.62,16.22 18.04,15.5C18.46,14.77 18.73,14 18.87,13.21L20.64,17M12,22L9.59,18.56C10.33,18.83 11.14,19 12,19C12.86,19 13.67,18.83 14.41,18.56L12,22Z";
+        private const string SvgSliders = "M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z";
+        private const string SvgChevronDown = "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z";
+
         private static readonly string[] TintCodes = new[] { "000000", "2B1300", "330D00", "1F190D" };
         private static readonly string[] TintBadges = new[] { "Native", "4500K", "3500K", "Sepia" };
-        private static readonly string[] TintFullNames = new[]
-        {
-            "Native (Pure Brightness)",
-            "4500K Warm Amber (Night Light)",
-            "3500K Deep Ember (Low Blue Light)",
-            "Soft Sepia (Reading Mode)"
-        };
+        private static readonly string[] TintDropdownLabels = new[] { "Neutral Black", "Warm Amber", "Deep Ember", "Soft Sepia" };
 
         private readonly AppSettings _settings;
         private readonly SettingsService _settingsService;
@@ -89,6 +96,7 @@ namespace OpenDimmer.UI
         private UniformGrid _channelsGrid;
         private ScrollViewer _settingsScroll;
         private StackPanel _tintSettingsHost;
+        private TextBlock _configuredCountText;
         private TextBlock _footerStatusText;
         private Ellipse _nightSyncDot;
 
@@ -109,6 +117,7 @@ namespace OpenDimmer.UI
             public Border CardBorder;
             public Border BadgeBox;
             public TextBlock BadgeText;
+            public ContentControl TopRightIconSlot;
             public TextBlock StatusSubtitle;
             public Ellipse StatusDot;
             public Grid SliderHitArea;
@@ -129,22 +138,20 @@ namespace OpenDimmer.UI
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.CanResize;
             AllowsTransparency = true;
-            Background = new SolidColorBrush(ColSurfaceCanvas);
-            BorderBrush = new SolidColorBrush(ColBorderSubtle);
-            BorderThickness = new Thickness(1);
+            Background = System.Windows.Media.Brushes.Transparent;
             FontFamily = new System.Windows.Media.FontFamily("Segoe UI");
 
-            MinWidth = 320;
-            MinHeight = 380;
-            Width = 376;
-            Height = 456;
+            MinWidth = 340;
+            MinHeight = 410;
+            Width = 386;
+            Height = 468;
 
             WindowChrome.SetWindowChrome(this, new WindowChrome
             {
                 CaptionHeight = 0,
                 ResizeBorderThickness = new Thickness(6),
                 GlassFrameThickness = new Thickness(0),
-                CornerRadius = new CornerRadius(0)
+                CornerRadius = new CornerRadius(12)
             });
 
             Topmost = _settings.NonDimmableWindow;
@@ -190,14 +197,28 @@ namespace OpenDimmer.UI
             NativeMethods.TrimMemoryWorkingSet();
         }
 
+        private static WpfPath CreateVectorIcon(string pathData, MediaColor color, double width, double height)
+        {
+            return new WpfPath
+            {
+                Data = Geometry.Parse(pathData),
+                Fill = new SolidColorBrush(color),
+                Stretch = Stretch.Uniform,
+                Width = width,
+                Height = height,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+        }
+
         private void InstallCustomScrollbarStyle()
         {
             const string scrollBarXaml = @"
                 <Style xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
                        xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
                        TargetType='{x:Type ScrollBar}'>
-                    <Setter Property='Width' Value='6'/>
-                    <Setter Property='MinWidth' Value='6'/>
+                    <Setter Property='Width' Value='4'/>
+                    <Setter Property='MinWidth' Value='4'/>
                     <Setter Property='Background' Value='Transparent'/>
                     <Setter Property='Template'>
                         <Setter.Value>
@@ -207,7 +228,7 @@ namespace OpenDimmer.UI
                                         <Thumb>
                                             <Thumb.Template>
                                                 <ControlTemplate TargetType='{x:Type Thumb}'>
-                                                    <Border Background='#374151' CornerRadius='3' Margin='1,2,1,2'/>
+                                                    <Border Background='#374151' CornerRadius='2' Margin='0,2,0,2'/>
                                                 </ControlTemplate>
                                             </Thumb.Template>
                                         </Thumb>
@@ -228,17 +249,25 @@ namespace OpenDimmer.UI
 
         private void BuildUserInterface()
         {
+            // Rounded 12px outer frame matching Stitch window shell
+            var windowFrame = new Border
+            {
+                Background = new SolidColorBrush(ColSurfaceCanvas),
+                BorderBrush = new SolidColorBrush(ColBorderSubtle),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                ClipToBounds = true
+            };
+
             var outerGrid = new Grid();
-            outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(40) });
+            outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(42) });
             outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(24) });
 
-            // Row 0: Stitch Header
             var header = BuildHeaderBar();
             Grid.SetRow(header, 0);
             outerGrid.Children.Add(header);
 
-            // Row 1: Main Content Area
             var mainContent = new Grid { Margin = new Thickness(10, 2, 10, 4) };
             _screensView = BuildScreensView();
             _settingsScroll = BuildSettingsView();
@@ -249,15 +278,16 @@ namespace OpenDimmer.UI
             Grid.SetRow(mainContent, 1);
             outerGrid.Children.Add(mainContent);
 
-            // Row 2: Stitch Footer
             var footer = BuildFooterBar();
             Grid.SetRow(footer, 2);
             outerGrid.Children.Add(footer);
 
-            Content = outerGrid;
+            windowFrame.Child = outerGrid;
+            Content = windowFrame;
 
             RebuildChannelStrips();
             RebuildTintSettingsRows();
+            UpdateConfiguredCounter();
             SwitchView("screens");
         }
 
@@ -266,7 +296,7 @@ namespace OpenDimmer.UI
             var header = new Grid
             {
                 Background = new SolidColorBrush(ColSurfaceCanvas),
-                Margin = new Thickness(10, 0, 8, 0)
+                Margin = new Thickness(12, 0, 8, 0)
             };
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -284,21 +314,15 @@ namespace OpenDimmer.UI
                 }
             };
 
-            // Left: Icon + Title
+            // Left: Vector Sun/Starburst + OpenDimmer
             var brandStack = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            var sunIcon = new TextBlock
-            {
-                Text = "☀",
-                FontSize = 14,
-                Foreground = new SolidColorBrush(ColPrimary),
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, -1, 6, 0)
-            };
+            var brandIcon = CreateVectorIcon(SvgBrightnessMedium, ColPrimary, 16, 16);
+            brandIcon.Margin = new Thickness(0, 0, 6, 0);
 
             var titleText = new TextBlock
             {
@@ -309,12 +333,12 @@ namespace OpenDimmer.UI
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            brandStack.Children.Add(sunIcon);
+            brandStack.Children.Add(brandIcon);
             brandStack.Children.Add(titleText);
             Grid.SetColumn(brandStack, 0);
             header.Children.Add(brandStack);
 
-            // Center: Segmented Nav Pill (Screens | Settings)
+            // Center: Segmented Pill (Screens | Settings)
             var navPill = new Border
             {
                 Background = new SolidColorBrush(ColSurfaceInput),
@@ -332,6 +356,7 @@ namespace OpenDimmer.UI
             _navBtnSettings.Click += (s, e) =>
             {
                 RebuildTintSettingsRows();
+                UpdateConfiguredCounter();
                 SwitchView("settings");
             };
 
@@ -412,7 +437,7 @@ namespace OpenDimmer.UI
                 Width = 24,
                 Height = 24,
                 Margin = new Thickness(2, 0, 0, 0),
-                FontSize = 11,
+                FontSize = 10.5,
                 Background = System.Windows.Media.Brushes.Transparent,
                 Foreground = new SolidColorBrush(ColTextSecondary),
                 BorderThickness = new Thickness(0),
@@ -459,12 +484,10 @@ namespace OpenDimmer.UI
             Grid.SetRow(_channelsGrid, 0);
             grid.Children.Add(_channelsGrid);
 
-            // Bottom Utility & Quick Preset Strip
+            // Bottom Utility & Quick Preset Strip (Borderless elevated surface #22272E matching Stitch)
             var bottomBar = new Border
             {
                 Background = new SolidColorBrush(ColSurfaceCard),
-                BorderBrush = new SolidColorBrush(ColBorderSubtle),
-                BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
                 Padding = new Thickness(10, 6, 10, 6)
             };
@@ -498,7 +521,7 @@ namespace OpenDimmer.UI
                 Text = "Night Sync",
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(ColTextPrimary),
+                Foreground = new SolidColorBrush(ColTextSecondary),
                 VerticalAlignment = VerticalAlignment.Center
             };
             nightStack.Children.Add(dotHolder);
@@ -509,7 +532,7 @@ namespace OpenDimmer.UI
             DockPanel.SetDock(nightBtn, Dock.Left);
             bottomDock.Children.Add(nightBtn);
 
-            // Right: Quick Dimming Presets (0%, 25%, 50%, 75%)
+            // Right: Quick Presets (25%, 50%, 75%, Off)
             var presetsPill = new Border
             {
                 Background = new SolidColorBrush(ColSurfaceInput),
@@ -519,14 +542,15 @@ namespace OpenDimmer.UI
             var presetsStack = new StackPanel { Orientation = Orientation.Horizontal };
             _presetButtons.Clear();
 
-            int[] presets = new[] { 0, 25, 50, 75 };
+            int[] presets = new[] { 25, 50, 75, 0 };
             foreach (int p in presets)
             {
                 int capturedPreset = p;
-                var pBtn = CreateNavPillButton(p + "%", false);
+                string label = p == 0 ? "Off" : (p + "%");
+                var pBtn = CreateNavPillButton(label, p == _settings.Master.Dim);
                 pBtn.FontSize = 10;
-                pBtn.Padding = new Thickness(7, 2, 7, 2);
-                pBtn.ToolTip = "Set dimming level to " + p + "%";
+                pBtn.Padding = new Thickness(8, 2, 8, 2);
+                pBtn.ToolTip = p == 0 ? "Disable dimming (100% brightness)" : ("Set dimming to " + p + "%");
                 pBtn.Click += (s, e) => ApplyQuickPreset(capturedPreset);
                 _presetButtons.Add(pBtn);
                 presetsStack.Children.Add(pBtn);
@@ -550,7 +574,7 @@ namespace OpenDimmer.UI
                 Background = System.Windows.Media.Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 Cursor = Cursors.Hand,
-                Padding = new Thickness(4, 2, 6, 2)
+                Padding = new Thickness(2, 2, 6, 2)
             };
             var template = new ControlTemplate(typeof(Button));
             var border = new FrameworkElementFactory(typeof(Border));
@@ -577,7 +601,7 @@ namespace OpenDimmer.UI
                 true,
                 0,
                 "Master",
-                _settings.Master.On ? "Linked All" : "Off",
+                _settings.Master.On ? "Linked All" : "Unlinked",
                 _settings.Master.On,
                 _settings.Master.Dim,
                 "000000");
@@ -590,14 +614,13 @@ namespace OpenDimmer.UI
                 var cfg = _settings.Screens.FirstOrDefault(x => x.Id == id);
                 if (cfg == null) continue;
 
-                string shortTitle = screen.Primary ? ("Display " + id + " ★") : ("Display " + id);
-                string sub = screen.Bounds.Width + "×" + screen.Bounds.Height;
+                var hwInfo = DisplayInfoService.GetMonitorInfo(screen, id);
 
                 var strip = CreateChannelStrip(
                     false,
                     id,
-                    shortTitle,
-                    sub,
+                    hwInfo.FriendlyName,
+                    hwInfo.Subtitle,
                     cfg.On,
                     cfg.Dim,
                     cfg.Tint);
@@ -627,23 +650,44 @@ namespace OpenDimmer.UI
                 Value = Math.Max(0, Math.Min(90, dimValue))
             };
 
+            // Borderless card surface (#1F2937 for Master, #22272E for Monitors)
             var card = new Border
             {
                 Background = new SolidColorBrush(isMaster ? ColSurfaceMaster : ColSurfaceCard),
-                BorderBrush = new SolidColorBrush(isMaster ? ColBorderMaster : ColBorderSubtle),
-                BorderThickness = new Thickness(1),
+                BorderThickness = new Thickness(0),
                 CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(8, 8, 8, 8),
-                Margin = new Thickness(3, 0, 3, 0)
+                Padding = new Thickness(10, 10, 10, 10),
+                Margin = new Thickness(3, 0, 3, 0),
+                ClipToBounds = true
             };
             visual.CardBorder = card;
+
+            var cardContainer = new Grid();
+
+            // Subtle top-left radial glow on Master card (matching Stitch)
+            if (isMaster)
+            {
+                var glow = new Ellipse
+                {
+                    Width = 110,
+                    Height = 110,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(-45, -45, 0, 0),
+                    IsHitTestVisible = false,
+                    Fill = new RadialGradientBrush(
+                        MediaColor.FromArgb(28, 173, 198, 255),
+                        MediaColor.FromArgb(0, 173, 198, 255))
+                };
+                cardContainer.Children.Add(glow);
+            }
 
             var rootGrid = new Grid();
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // 1. Top Header (Badge + Toggle Power + Title + Subtitle)
+            // 1. Top Header (Badge + Crisp SVG Icon + Title + Subtitle)
             var headerStack = new StackPanel
             {
                 Orientation = Orientation.Vertical,
@@ -656,7 +700,7 @@ namespace OpenDimmer.UI
                 Margin = new Thickness(0, 0, 0, 4),
                 Cursor = Cursors.Hand,
                 Background = System.Windows.Media.Brushes.Transparent,
-                ToolTip = isMaster ? "Click to toggle Master dimming on all screens" : ("Click to toggle Display #" + screenId)
+                ToolTip = isMaster ? "Click to toggle Master dimming on all screens" : ("Click to toggle " + title)
             };
 
             var badge = new Border
@@ -678,15 +722,13 @@ namespace OpenDimmer.UI
             DockPanel.SetDock(badge, Dock.Left);
             topRow.Children.Add(badge);
 
-            var statusIcon = new TextBlock
+            var iconSlot = new ContentControl
             {
-                Text = isMaster ? "⛓" : "▣",
-                FontSize = 12,
-                Foreground = new SolidColorBrush(isOn ? ColPrimary : ColTextSecondary),
                 VerticalAlignment = VerticalAlignment.Center
             };
-            DockPanel.SetDock(statusIcon, Dock.Right);
-            topRow.Children.Add(statusIcon);
+            visual.TopRightIconSlot = iconSlot;
+            DockPanel.SetDock(iconSlot, Dock.Right);
+            topRow.Children.Add(iconSlot);
 
             topRow.MouseLeftButtonDown += (s, e) =>
             {
@@ -713,10 +755,11 @@ namespace OpenDimmer.UI
 
             var statusDot = new Ellipse
             {
-                Width = 5,
-                Height = 5,
+                Width = 4,
+                Height = 4,
                 Margin = new Thickness(0, 0, 4, 0),
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
+                Visibility = isMaster ? Visibility.Visible : Visibility.Collapsed
             };
             visual.StatusDot = statusDot;
 
@@ -738,21 +781,22 @@ namespace OpenDimmer.UI
             Grid.SetRow(headerStack, 0);
             rootGrid.Children.Add(headerStack);
 
-            // 2. Center Tactile Vertical Slider
+            // 2. Center Tactile Vertical Slider (Ticks positioned right next to slider track)
             var sliderArea = new Grid
             {
                 Margin = new Thickness(0, 8, 0, 8),
-                MinHeight = 135
+                MinHeight = 140,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Width = 64
             };
 
-            // Left scale ticks
             var ticksGrid = new Grid
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
                 Margin = new Thickness(2, 6, 0, 6),
                 IsHitTestVisible = false
             };
-            string[] tickLabels = isMaster ? new[] { "90", "70", "45", "20", "0" } : new[] { "-", "-", "-", "-", "-" };
+            string[] tickLabels = isMaster ? new[] { "100", "75", "50", "25", "0" } : new[] { "-", "-", "-", "-", "-" };
             for (int t = 0; t < tickLabels.Length; t++)
             {
                 ticksGrid.RowDefinitions.Add(new RowDefinition
@@ -771,12 +815,12 @@ namespace OpenDimmer.UI
             }
             sliderArea.Children.Add(ticksGrid);
 
-            // Interactive Slider Hit Box
             var sliderHit = new Grid
             {
-                Width = 30,
+                Width = 28,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Stretch,
+                Margin = new Thickness(10, 0, 0, 0),
                 Background = System.Windows.Media.Brushes.Transparent,
                 Cursor = Cursors.Hand
             };
@@ -811,10 +855,15 @@ namespace OpenDimmer.UI
                 Height = 16,
                 CornerRadius = new CornerRadius(8),
                 Background = new SolidColorBrush(ColTextPrimary),
-                BorderBrush = new SolidColorBrush(MediaColor.FromArgb(60, 0, 0, 0)),
-                BorderThickness = new Thickness(1),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Bottom,
+                Effect = new DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    BlurRadius = 4,
+                    ShadowDepth = 1,
+                    Opacity = 0.55
+                },
                 Child = new Ellipse
                 {
                     Width = 6,
@@ -835,7 +884,7 @@ namespace OpenDimmer.UI
             Grid.SetRow(sliderArea, 1);
             rootGrid.Children.Add(sliderArea);
 
-            // 3. Bottom Numeric Pill & Warmth/Metric Pill
+            // 3. Bottom Numeric Pill & Metric Badge
             var bottomStack = new StackPanel
             {
                 Orientation = Orientation.Vertical,
@@ -844,12 +893,11 @@ namespace OpenDimmer.UI
 
             var inputPill = new Border
             {
-                Width = 46,
+                Width = 44,
                 Height = 24,
                 CornerRadius = new CornerRadius(4),
                 Background = new SolidColorBrush(ColSurfaceInput),
-                BorderBrush = new SolidColorBrush(ColBorderSubtle),
-                BorderThickness = new Thickness(1),
+                BorderThickness = new Thickness(0),
                 Margin = new Thickness(0, 0, 0, 5)
             };
 
@@ -870,54 +918,76 @@ namespace OpenDimmer.UI
             inputPill.Child = valBox;
             bottomStack.Children.Add(inputPill);
 
-            // Warmth / Status Badge
-            var metricPill = new Border
+            if (isMaster)
             {
-                Background = new SolidColorBrush(ColSurfaceInput),
-                CornerRadius = new CornerRadius(9),
-                Padding = new Thickness(7, 2, 7, 2),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Cursor = isMaster ? Cursors.Arrow : Cursors.Hand,
-                ToolTip = isMaster ? "Controls all displays" : "Click to cycle Night Light / Color Filter for this display"
-            };
-
-            var metricStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var metricDot = new Ellipse
+                // Master bottom metric: Sun SVG icon + "ALL" (no pill background, matching Stitch)
+                var masterMetric = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 2, 0, 0)
+                };
+                var sunSmall = CreateVectorIcon(SvgSunSmall, ColPrimaryContainer, 12, 12);
+                sunSmall.Margin = new Thickness(0, 0, 4, 0);
+                var allLabel = new TextBlock
+                {
+                    Text = "ALL",
+                    FontSize = 9.5,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(ColTextSecondary),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                masterMetric.Children.Add(sunSmall);
+                masterMetric.Children.Add(allLabel);
+                bottomStack.Children.Add(masterMetric);
+            }
+            else
             {
-                Width = 6,
-                Height = 6,
-                Margin = new Thickness(0, 0, 4, 0),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            visual.MetricDot = metricDot;
+                // Monitor bottom metric: rounded pill (#14171C) with dot + temperature/Native
+                var metricPill = new Border
+                {
+                    Background = new SolidColorBrush(ColSurfaceInput),
+                    CornerRadius = new CornerRadius(9),
+                    Padding = new Thickness(7, 2, 7, 2),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Cursor = Cursors.Hand,
+                    ToolTip = "Click to cycle Night Light / Color Filter for this display"
+                };
 
-            var metricLabel = new TextBlock
-            {
-                FontSize = 9.5,
-                FontWeight = FontWeights.SemiBold,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            visual.MetricLabel = metricLabel;
+                var metricStack = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+                var metricDot = new Ellipse
+                {
+                    Width = 6,
+                    Height = 6,
+                    Margin = new Thickness(0, 0, 4, 0),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                visual.MetricDot = metricDot;
 
-            metricStack.Children.Add(metricDot);
-            metricStack.Children.Add(metricLabel);
-            metricPill.Child = metricStack;
+                var metricLabel = new TextBlock
+                {
+                    FontSize = 9.5,
+                    FontWeight = FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                visual.MetricLabel = metricLabel;
 
-            if (!isMaster)
-            {
+                metricStack.Children.Add(metricDot);
+                metricStack.Children.Add(metricLabel);
+                metricPill.Child = metricStack;
+
                 metricPill.MouseLeftButtonDown += (s, e) =>
                 {
                     CycleMonitorTint(visual.ScreenId);
                     e.Handled = true;
                 };
-            }
 
-            bottomStack.Children.Add(metricPill);
+                bottomStack.Children.Add(metricPill);
+            }
 
             Grid.SetRow(bottomStack, 2);
             rootGrid.Children.Add(bottomStack);
 
-            // Mouse wheel anywhere on card
             card.PreviewMouseWheel += (s, e) =>
             {
                 int delta = e.Delta > 0 ? 2 : -2;
@@ -929,7 +999,8 @@ namespace OpenDimmer.UI
                 e.Handled = true;
             };
 
-            card.Child = rootGrid;
+            cardContainer.Children.Add(rootGrid);
+            card.Child = cardContainer;
             UpdateChannelVisualState(visual, tintHex);
             return visual;
         }
@@ -1028,36 +1099,41 @@ namespace OpenDimmer.UI
         {
             bool on = visual.IsOn;
 
-            visual.BadgeBox.Background = new SolidColorBrush(on ? ColPrimaryContainer : ColSurfaceInput);
-            visual.BadgeText.Foreground = new SolidColorBrush(on ? ColOnPrimary : ColTextSecondary);
-
-            visual.StatusDot.Fill = new SolidColorBrush(on ? ColPrimary : ColOutlineVariant);
             if (visual.IsMaster)
             {
+                // Master badge is bright blue (#4D8EFF) when linked, dark (#14171C) when unlinked
+                visual.BadgeBox.Background = new SolidColorBrush(on ? ColPrimaryContainer : ColSurfaceInput);
+                visual.BadgeText.Foreground = new SolidColorBrush(on ? ColOnPrimary : ColTextSecondary);
+                visual.TopRightIconSlot.Content = CreateVectorIcon(SvgLink, on ? ColPrimary : ColTextSecondary, 14, 14);
+                visual.StatusDot.Fill = new SolidColorBrush(on ? ColPrimary : ColOutlineVariant);
                 visual.StatusSubtitle.Text = on ? "Linked All" : "Unlinked";
                 visual.StatusSubtitle.Foreground = new SolidColorBrush(on ? ColPrimary : ColTextSecondary);
             }
-
-            visual.TrackFill.Opacity = on ? 1.0 : 0.35;
-            visual.ThumbKnob.Opacity = on ? 1.0 : 0.55;
-            visual.ValueInput.Opacity = on ? 1.0 : 0.6;
-            visual.ValueInput.Text = visual.Value + "%";
-
-            if (visual.IsMaster)
-            {
-                visual.MetricDot.Fill = new SolidColorBrush(ColPrimary);
-                visual.MetricLabel.Text = "ALL";
-                visual.MetricLabel.Foreground = new SolidColorBrush(ColTextSecondary);
-            }
             else
             {
+                // Monitor badge is dark (#14171C) with crisp number (matching Stitch)
+                visual.BadgeBox.Background = new SolidColorBrush(ColSurfaceInput);
+                visual.BadgeText.Foreground = new SolidColorBrush(on ? ColTextPrimary : ColTextSecondary);
+
                 string code = string.IsNullOrEmpty(tintHex) ? "000000" : tintHex.ToUpperInvariant();
-                int idx = Array.IndexOf(TintCodes, code);
                 bool isWarm = code != "000000";
-                visual.MetricDot.Fill = new SolidColorBrush(isWarm ? ColSecondary : ColPrimaryContainer);
-                visual.MetricLabel.Text = idx >= 0 ? TintBadges[idx] : "Custom";
-                visual.MetricLabel.Foreground = new SolidColorBrush(isWarm ? ColSecondary : ColTextSecondary);
+                visual.TopRightIconSlot.Content = isWarm
+                    ? CreateVectorIcon(SvgNightlight, ColSecondary, 13, 13)
+                    : CreateVectorIcon(SvgDesktop, ColTextSecondary, 13, 13);
+
+                int idx = Array.IndexOf(TintCodes, code);
+                if (visual.MetricDot != null && visual.MetricLabel != null)
+                {
+                    visual.MetricDot.Fill = new SolidColorBrush(isWarm ? ColSecondary : ColPrimaryContainer);
+                    visual.MetricLabel.Text = idx >= 0 ? TintBadges[idx] : "Custom";
+                    visual.MetricLabel.Foreground = new SolidColorBrush(isWarm ? ColSecondary : ColTextSecondary);
+                }
             }
+
+            visual.TrackFill.Opacity = on ? 1.0 : 0.35;
+            visual.ThumbKnob.Opacity = on ? 1.0 : 0.65;
+            visual.ValueInput.Opacity = on ? 1.0 : 0.65;
+            visual.ValueInput.Text = visual.Value + "%";
 
             UpdateSliderGeometry(visual);
         }
@@ -1097,7 +1173,6 @@ namespace OpenDimmer.UI
                     UpdateChannelVisualState(visual, cfg.Tint);
                 }
 
-                // Toggling an individual monitor disengages Master lock
                 _masterStrip.IsOn = false;
                 _settings.Master.On = false;
                 UpdateChannelVisualState(_masterStrip, "000000");
@@ -1149,7 +1224,6 @@ namespace OpenDimmer.UI
 
                 if (fromUser)
                 {
-                    // Adjusting an individual screen disengages Master lock
                     _masterStrip.IsOn = false;
                     _settings.Master.On = false;
                     UpdateChannelVisualState(_masterStrip, "000000");
@@ -1211,13 +1285,21 @@ namespace OpenDimmer.UI
             _masterStrip.IsOn = turnOn;
             SetChannelValue(_masterStrip, presetDim, true);
 
+            string targetLabel = presetDim == 0 ? "Off" : (presetDim + "%");
             foreach (var btn in _presetButtons)
             {
-                bool match = (btn.Content as string) == (presetDim + "%");
+                bool match = (btn.Content as string) == targetLabel;
                 StyleNavPillButton(btn, match);
+                if (match)
+                {
+                    btn.Foreground = new SolidColorBrush(ColPrimary);
+                }
             }
         }
 
+        // =====================================================================
+        // SETTINGS VIEW (Exact Stitch Layout from Screenshot 2)
+        // =====================================================================
         private ScrollViewer BuildSettingsView()
         {
             var scroll = new ScrollViewer
@@ -1233,105 +1315,183 @@ namespace OpenDimmer.UI
                 Margin = new Thickness(0, 0, 4, 4)
             };
 
-            // Group 1: Color Filter & Night Light
-            var tintCard = CreateSettingsCard(
-                "Color Filter & Night Light",
-                "Select a warm color temperature per display to reduce blue light at night.");
+            // Card 1: Color Filter (Night Light / Tint)
+            var tintCard = new Border
+            {
+                Background = new SolidColorBrush(ColSurfaceCard),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 10, 12, 10),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var tintCardStack = new StackPanel { Orientation = Orientation.Vertical };
+
+            var tintHeaderRow = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var tintHeaderIcon = CreateVectorIcon(SvgSunSmall, ColSecondary, 14, 14);
+            tintHeaderIcon.Margin = new Thickness(0, 0, 6, 0);
+            tintHeaderRow.Children.Add(tintHeaderIcon);
+            tintHeaderRow.Children.Add(new TextBlock
+            {
+                Text = "Color Filter (Night Light / Tint)",
+                FontSize = 12,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(ColTextPrimary),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            tintCardStack.Children.Add(tintHeaderRow);
+
+            tintCardStack.Children.Add(new TextBlock
+            {
+                Text = "Reduce eye strain at night by adding a warm tint to the dimming filter.",
+                FontSize = 10.5,
+                Foreground = new SolidColorBrush(ColTextSecondary),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 4, 0, 8)
+            });
+
             _tintSettingsHost = new StackPanel { Orientation = Orientation.Vertical };
-            ((StackPanel)tintCard.Child).Children.Add(_tintSettingsHost);
+            tintCardStack.Children.Add(_tintSettingsHost);
+            tintCard.Child = tintCardStack;
             rootStack.Children.Add(tintCard);
 
-            // Group 2: Display & Dimming Engine
-            var engineCard = CreateSettingsCard(
-                "Dimming Engine & Multi-Monitor",
-                "Configure overlays, hardware LUT gamma, and multi-monitor behavior.");
-            var engineStack = (StackPanel)engineCard.Child;
+            // Card 2: Behavior & Display
+            var behaviorCard = new Border
+            {
+                Background = new SolidColorBrush(ColSurfaceCard),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 10, 12, 10),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
 
-            engineStack.Children.Add(CreateSwitchRow(
-                "Show screen identity numbers",
-                "Displays large monitor ID (1, 2) on each screen",
+            var behaviorStack = new StackPanel { Orientation = Orientation.Vertical };
+
+            var behaviorHeader = new DockPanel
+            {
+                LastChildFill = false,
+                Margin = new Thickness(0, 0, 0, 6)
+            };
+
+            var bLeft = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var bIcon = CreateVectorIcon(SvgSliders, ColPrimary, 14, 14);
+            bIcon.Margin = new Thickness(0, 0, 6, 0);
+            bLeft.Children.Add(bIcon);
+            bLeft.Children.Add(new TextBlock
+            {
+                Text = "Behavior & Display",
+                FontSize = 12,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(ColTextPrimary),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            DockPanel.SetDock(bLeft, Dock.Left);
+            behaviorHeader.Children.Add(bLeft);
+
+            _configuredCountText = new TextBlock
+            {
+                Text = "11 CONFIGURED",
+                FontSize = 9.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(ColTextSecondary),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            DockPanel.SetDock(_configuredCountText, Dock.Right);
+            behaviorHeader.Children.Add(_configuredCountText);
+
+            behaviorStack.Children.Add(behaviorHeader);
+
+            behaviorStack.Children.Add(CreateSwitchRow(
+                "Show screen numbers",
+                "Display visual channel badges (1, 2)",
                 _settings.ShowIds,
-                val => { _settings.ShowIds = val; _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.ShowIds = val; UpdateConfiguredCounter(); _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
 
-            engineStack.Children.Add(CreateSwitchRow(
-                "Show screen boundaries",
-                "Draws a highlight border around each monitor",
+            behaviorStack.Children.Add(CreateSwitchRow(
+                "Show screen borders",
+                "Accent outline around controlled monitors",
                 _settings.ShowBoundaries,
-                val => { _settings.ShowBoundaries = val; _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.ShowBoundaries = val; UpdateConfiguredCounter(); _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
 
-            engineStack.Children.Add(CreateSwitchRow(
+            behaviorStack.Children.Add(CreateSwitchRow(
                 "Proportional Master mode",
-                "Preserves brightness difference between displays",
+                "Preserve relative brightness offset",
                 _settings.Master.Proportional,
-                val => { _settings.Master.Proportional = val; _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.Master.Proportional = val; UpdateConfiguredCounter(); _settingsService.Save(_settings); }));
 
-            engineStack.Children.Add(CreateSwitchRow(
-                "Hardware Gamma (Start Menu & Cursor)",
-                "Also dims Start Menu, Taskbar, and mouse cursor",
+            behaviorStack.Children.Add(CreateSwitchRow(
+                "Dim Start Menu & Cursor",
+                "Applies global hardware gamma ramp",
                 _settings.UseHardwareGamma,
+                true,
                 val =>
                 {
                     _settings.UseHardwareGamma = val;
                     UpdateFooterStatus();
+                    UpdateConfiguredCounter();
                     _overlayManager.RefreshAllOverlays();
                     _settingsService.Save(_settings);
                 }));
 
-            engineStack.Children.Add(CreateSwitchRow(
+            behaviorStack.Children.Add(CreateSwitchRow(
                 "Fix Auto-Hide Taskbar edge",
                 "Leaves 1px trigger strip for auto-hidden taskbars",
                 _settings.AvoidTaskbarAutoHideLock,
-                val => { _settings.AvoidTaskbarAutoHideLock = val; _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.AvoidTaskbarAutoHideLock = val; UpdateConfiguredCounter(); _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
 
-            rootStack.Children.Add(engineCard);
-
-            // Group 3: Window & System Startup
-            var appCard = CreateSettingsCard(
-                "Application & Startup",
-                "Window behavior, system tray integration, and startup options.");
-            var appStack = (StackPanel)appCard.Child;
-
-            appStack.Children.Add(CreateSwitchRow(
-                "Keep control panel undimmed",
+            behaviorStack.Children.Add(CreateSwitchRow(
+                "Keep panel undimmed",
                 "Keeps OpenDimmer above the dimming overlay",
                 _settings.NonDimmableWindow,
-                val => { _settings.NonDimmableWindow = val; Topmost = val; _overlayManager.EnforceAllTopmost(); _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.NonDimmableWindow = val; Topmost = val; UpdateConfiguredCounter(); _overlayManager.EnforceAllTopmost(); _settingsService.Save(_settings); }));
 
-            appStack.Children.Add(CreateSwitchRow(
+            behaviorStack.Children.Add(CreateSwitchRow(
                 "Movable control window",
                 "Allows dragging the window by its header",
                 _settings.MovableWindow,
-                val => { _settings.MovableWindow = val; _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.MovableWindow = val; UpdateConfiguredCounter(); _settingsService.Save(_settings); }));
 
-            appStack.Children.Add(CreateSwitchRow(
+            behaviorStack.Children.Add(CreateSwitchRow(
                 "Close button (✕) hides to tray",
                 "Keeps dimming active in background when closed",
                 _settings.CloseHidesToTray,
-                val => { _settings.CloseHidesToTray = val; _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.CloseHidesToTray = val; UpdateConfiguredCounter(); _settingsService.Save(_settings); }));
 
-            appStack.Children.Add(CreateSwitchRow(
+            behaviorStack.Children.Add(CreateSwitchRow(
                 "Show in taskbar",
                 "Displays OpenDimmer in the Windows taskbar",
                 _settings.ShowInTaskbar,
-                val => { _settings.ShowInTaskbar = val; ShowInTaskbar = val; _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.ShowInTaskbar = val; ShowInTaskbar = val; UpdateConfiguredCounter(); _settingsService.Save(_settings); }));
 
-            appStack.Children.Add(CreateSwitchRow(
-                "Start minimized in system tray",
-                "Launches silently in the background",
+            behaviorStack.Children.Add(CreateSwitchRow(
+                "Start minimized in tray",
+                "Launches silently in the system tray",
                 _settings.StartMinimised,
-                val => { _settings.StartMinimised = val; _settingsService.Save(_settings); }));
+                true,
+                val => { _settings.StartMinimised = val; UpdateConfiguredCounter(); _settingsService.Save(_settings); }));
 
-            appStack.Children.Add(CreateSwitchRow(
-                "Launch at Windows login",
-                "Automatically starts OpenDimmer with Windows",
+            behaviorStack.Children.Add(CreateSwitchRow(
+                "Launch at Windows startup",
+                "Automatically starts OpenDimmer after user login",
                 _settings.AutoRun,
-                val => { _settings.AutoRun = val; AutoRunService.SetAutoRun(val); _settingsService.Save(_settings); }));
+                false,
+                val => { _settings.AutoRun = val; AutoRunService.SetAutoRun(val); UpdateConfiguredCounter(); _settingsService.Save(_settings); }));
 
-            // Action Buttons (Reset Window + Copy Diagnostics)
+            // Action Buttons Footer inside Settings
             var actionGrid = new UniformGrid
             {
                 Columns = 2,
-                Margin = new Thickness(0, 8, 0, 2)
+                Margin = new Thickness(0, 10, 0, 2)
             };
 
             var btnReset = CreateActionButton("Reset Window", "Restore default size and bottom-right position");
@@ -1348,54 +1508,19 @@ namespace OpenDimmer.UI
 
             actionGrid.Children.Add(btnReset);
             actionGrid.Children.Add(btnDiag);
-            appStack.Children.Add(actionGrid);
+            behaviorStack.Children.Add(actionGrid);
 
-            var repoLink = CreateActionButton("GitHub Repository (TrueTrailBlazer/OpenDimmer)", "Open project page in browser");
-            repoLink.Margin = new Thickness(0, 6, 0, 0);
-            repoLink.Click += (s, e) =>
-            {
-                try { Process.Start("https://github.com/TrueTrailBlazer/OpenDimmer"); } catch { }
-            };
-            appStack.Children.Add(repoLink);
-
-            rootStack.Children.Add(appCard);
+            behaviorCard.Child = behaviorStack;
+            rootStack.Children.Add(behaviorCard);
 
             scroll.Content = rootStack;
             return scroll;
         }
 
-        private Border CreateSettingsCard(string title, string subtitle)
+        private void UpdateConfiguredCounter()
         {
-            var card = new Border
-            {
-                Background = new SolidColorBrush(ColSurfaceCard),
-                BorderBrush = new SolidColorBrush(ColBorderSubtle),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(10, 8, 10, 8),
-                Margin = new Thickness(0, 0, 0, 8)
-            };
-
-            var stack = new StackPanel { Orientation = Orientation.Vertical };
-            stack.Children.Add(new TextBlock
-            {
-                Text = title,
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(ColTextPrimary)
-            });
-
-            stack.Children.Add(new TextBlock
-            {
-                Text = subtitle,
-                FontSize = 10.5,
-                Foreground = new SolidColorBrush(ColTextSecondary),
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 2, 0, 6)
-            });
-
-            card.Child = stack;
-            return card;
+            if (_configuredCountText == null) return;
+            _configuredCountText.Text = "11 CONFIGURED";
         }
 
         private void RebuildTintSettingsRows()
@@ -1407,77 +1532,287 @@ namespace OpenDimmer.UI
             for (int i = 0; i < screens.Length; i++)
             {
                 int screenId = i + 1;
+                var screen = screens[i];
                 var cfg = _settings.Screens.FirstOrDefault(x => x.Id == screenId);
                 if (cfg == null) continue;
 
-                var rowStack = new StackPanel
+                if (cfg.TintIntensity <= 0) cfg.TintIntensity = 60;
+                var hwInfo = DisplayInfoService.GetMonitorInfo(screen, screenId);
+
+                // Inner dark sub-card (#16191E) matching Stitch Settings screenshot
+                var subCard = new Border
                 {
-                    Orientation = Orientation.Vertical,
-                    Margin = new Thickness(0, 4, 0, 4)
+                    Background = new SolidColorBrush(ColSurfaceSubCard),
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(10, 8, 10, 8),
+                    Margin = new Thickness(0, 0, 0, 6)
                 };
 
-                rowStack.Children.Add(new TextBlock
+                var subStack = new StackPanel { Orientation = Orientation.Vertical };
+
+                // Top Row: [Port Badge] [Monitor Name]   <--->   [● Warm Amber ⌄]
+                var topDock = new DockPanel { LastChildFill = false };
+
+                var leftInfo = new StackPanel
                 {
-                    Text = "Display #" + screenId + " (" + cfg.DeviceName + ")",
+                    Orientation = Orientation.Horizontal,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                var portBadge = new Border
+                {
+                    Background = new SolidColorBrush(ColSurfaceCard),
+                    CornerRadius = new CornerRadius(3),
+                    Padding = new Thickness(5, 2, 5, 2),
+                    Margin = new Thickness(0, 0, 7, 0),
+                    Child = new TextBlock
+                    {
+                        Text = hwInfo.PortBadge,
+                        FontSize = 9.5,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = new SolidColorBrush(ColTextSecondary)
+                    }
+                };
+
+                var nameText = new TextBlock
+                {
+                    Text = hwInfo.FriendlyName,
+                    FontSize = 11.5,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(ColTextPrimary),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                leftInfo.Children.Add(portBadge);
+                leftInfo.Children.Add(nameText);
+                DockPanel.SetDock(leftInfo, Dock.Left);
+                topDock.Children.Add(leftInfo);
+
+                // Right Dropdown Pill Button
+                string currentCode = string.IsNullOrEmpty(cfg.Tint) ? "000000" : cfg.Tint.ToUpperInvariant();
+                int currentIdx = Math.Max(0, Array.IndexOf(TintCodes, currentCode));
+                bool isWarm = currentCode != "000000";
+
+                var dropBorder = new Border
+                {
+                    Background = new SolidColorBrush(ColSurfaceCard),
+                    BorderBrush = new SolidColorBrush(ColBorderSubtle),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(5),
+                    Padding = new Thickness(8, 4, 8, 4),
+                    Cursor = Cursors.Hand
+                };
+
+                var dropStack = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                var dropDot = new Ellipse
+                {
+                    Width = 7,
+                    Height = 7,
+                    Fill = new SolidColorBrush(isWarm ? ColSecondary : ColBorderSubtle),
+                    Margin = new Thickness(0, 0, 6, 0),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                var dropLabel = new TextBlock
+                {
+                    Text = TintDropdownLabels[currentIdx],
                     FontSize = 11,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = new SolidColorBrush(ColTextPrimary),
-                    Margin = new Thickness(0, 0, 0, 4)
-                });
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 5, 0)
+                };
 
-                var pillGrid = new UniformGrid { Columns = 4 };
-                var rowButtons = new List<Button>();
-                string currentCode = string.IsNullOrEmpty(cfg.Tint) ? "000000" : cfg.Tint.ToUpperInvariant();
+                var dropChev = CreateVectorIcon(SvgChevronDown, ColTextSecondary, 11, 11);
 
-                for (int t = 0; t < TintCodes.Length; t++)
+                dropStack.Children.Add(dropDot);
+                dropStack.Children.Add(dropLabel);
+                dropStack.Children.Add(dropChev);
+                dropBorder.Child = dropStack;
+
+                DockPanel.SetDock(dropBorder, Dock.Right);
+                topDock.Children.Add(dropBorder);
+                subStack.Children.Add(topDock);
+
+                // Bottom Row: [4500K Intensity] [========------] [60%] (Visible when a warm tint is selected)
+                var intensityGrid = new Grid
                 {
-                    int capturedTintIdx = t;
-                    int capturedScreenId = screenId;
-                    bool isActive = TintCodes[t] == currentCode;
+                    Margin = new Thickness(0, 8, 0, 2),
+                    Visibility = isWarm ? Visibility.Visible : Visibility.Collapsed
+                };
+                intensityGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                intensityGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                intensityGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-                    var btn = CreateNavPillButton(TintBadges[t], isActive);
-                    btn.ToolTip = TintFullNames[t];
-                    btn.Background = new SolidColorBrush(isActive ? ColPrimaryContainer : ColSurfaceInput);
-                    btn.Foreground = new SolidColorBrush(isActive ? ColOnPrimary : ColTextSecondary);
+                var intLabelStack = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 8, 0)
+                };
+                var tempBadgeText = new TextBlock
+                {
+                    Text = TintBadges[currentIdx] + " ",
+                    FontSize = 10,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(ColSecondary)
+                };
+                intLabelStack.Children.Add(tempBadgeText);
+                intLabelStack.Children.Add(new TextBlock
+                {
+                    Text = "Intensity",
+                    FontSize = 10,
+                    Foreground = new SolidColorBrush(ColTextSecondary)
+                });
+                Grid.SetColumn(intLabelStack, 0);
+                intensityGrid.Children.Add(intLabelStack);
 
-                    rowButtons.Add(btn);
-                    btn.Click += (s, e) =>
+                var barHit = new Grid
+                {
+                    Height = 14,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    Cursor = Cursors.Hand
+                };
+
+                var barTrack = new Border
+                {
+                    Height = 5,
+                    CornerRadius = new CornerRadius(2.5),
+                    Background = new SolidColorBrush(ColSurfaceTrack),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    ClipToBounds = true
+                };
+
+                var barFill = new Border
+                {
+                    Height = 5,
+                    CornerRadius = new CornerRadius(2.5),
+                    Background = new SolidColorBrush(ColSecondary),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Width = 0
+                };
+                barTrack.Child = barFill;
+                barHit.Children.Add(barTrack);
+
+                Grid.SetColumn(barHit, 1);
+                intensityGrid.Children.Add(barHit);
+
+                var pctText = new TextBlock
+                {
+                    Text = cfg.TintIntensity + "%",
+                    FontSize = 10.5,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(ColTextPrimary),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(8, 0, 0, 0)
+                };
+                Grid.SetColumn(pctText, 2);
+                intensityGrid.Children.Add(pctText);
+
+                Action updateBarWidth = () =>
+                {
+                    double w = barHit.ActualWidth;
+                    if (w > 0)
                     {
-                        var targetCfg = _settings.Screens.FirstOrDefault(x => x.Id == capturedScreenId);
-                        if (targetCfg != null)
+                        barFill.Width = w * (Math.Max(10, Math.Min(100, cfg.TintIntensity)) / 100.0);
+                    }
+                };
+                barHit.SizeChanged += (s, e) => updateBarWidth();
+
+                int capturedScreenId = screenId;
+                bool draggingInt = false;
+                Action<MouseEventArgs> setIntensityFromMouse = e =>
+                {
+                    double w = Math.Max(1.0, barHit.ActualWidth);
+                    double x = e.GetPosition(barHit).X;
+                    int pct = (int)Math.Round(Math.Max(10.0, Math.Min(100.0, (x / w) * 100.0)));
+                    cfg.TintIntensity = pct;
+                    pctText.Text = pct + "%";
+                    updateBarWidth();
+                    _overlayManager.RefreshOverlay(capturedScreenId);
+                    _settingsService.Save(_settings);
+                };
+
+                barHit.MouseLeftButtonDown += (s, e) =>
+                {
+                    draggingInt = true;
+                    barHit.CaptureMouse();
+                    setIntensityFromMouse(e);
+                    e.Handled = true;
+                };
+                barHit.MouseMove += (s, e) =>
+                {
+                    if (draggingInt) setIntensityFromMouse(e);
+                };
+                barHit.MouseLeftButtonUp += (s, e) =>
+                {
+                    if (draggingInt)
+                    {
+                        draggingInt = false;
+                        barHit.ReleaseMouseCapture();
+                    }
+                };
+
+                // Dropdown menu on click
+                dropBorder.MouseLeftButtonDown += (s, e) =>
+                {
+                    var menu = new Forms.ContextMenuStrip
+                    {
+                        Renderer = new DarkTrayMenuRenderer(),
+                        ShowImageMargin = false,
+                        ShowCheckMargin = false,
+                        BackColor = DrawingColor.FromArgb(24, 27, 32),
+                        ForeColor = DrawingColor.FromArgb(243, 244, 246)
+                    };
+
+                    for (int t = 0; t < TintCodes.Length; t++)
+                    {
+                        int selIdx = t;
+                        menu.Items.Add(TintDropdownLabels[t] + " (" + TintBadges[t] + ")", null, (ms, me) =>
                         {
-                            targetCfg.Tint = TintCodes[capturedTintIdx];
-                            for (int b = 0; b < rowButtons.Count; b++)
-                            {
-                                bool sel = b == capturedTintIdx;
-                                rowButtons[b].Background = new SolidColorBrush(sel ? ColPrimaryContainer : ColSurfaceInput);
-                                rowButtons[b].Foreground = new SolidColorBrush(sel ? ColOnPrimary : ColTextSecondary);
-                            }
+                            cfg.Tint = TintCodes[selIdx];
+                            bool warmNow = cfg.Tint != "000000";
+                            dropDot.Fill = new SolidColorBrush(warmNow ? ColSecondary : ColBorderSubtle);
+                            dropLabel.Text = TintDropdownLabels[selIdx];
+                            tempBadgeText.Text = TintBadges[selIdx] + " ";
+                            intensityGrid.Visibility = warmNow ? Visibility.Visible : Visibility.Collapsed;
+                            Dispatcher.BeginInvoke(new Action(updateBarWidth), System.Windows.Threading.DispatcherPriority.Loaded);
 
                             var strip = _monitorStrips.FirstOrDefault(x => x.ScreenId == capturedScreenId);
                             if (strip != null)
                             {
-                                UpdateChannelVisualState(strip, targetCfg.Tint);
+                                UpdateChannelVisualState(strip, cfg.Tint);
                             }
                             UpdateNightSyncDotVisual();
                             _overlayManager.RefreshOverlay(capturedScreenId);
                             _settingsService.Save(_settings);
-                        }
-                    };
+                        });
+                    }
 
-                    pillGrid.Children.Add(btn);
-                }
+                    var pt = Forms.Control.MousePosition;
+                    menu.Show(pt);
+                    e.Handled = true;
+                };
 
-                rowStack.Children.Add(pillGrid);
-                _tintSettingsHost.Children.Add(rowStack);
+                subStack.Children.Add(intensityGrid);
+                subCard.Child = subStack;
+                _tintSettingsHost.Children.Add(subCard);
             }
         }
 
-        private Grid CreateSwitchRow(string title, string subtitle, bool initialValue, Action<bool> onToggled)
+        private StackPanel CreateSwitchRow(string title, string subtitle, bool initialValue, bool showBottomDivider, Action<bool> onToggled)
         {
+            var wrapper = new StackPanel { Orientation = Orientation.Vertical };
+
             var row = new Grid
             {
-                Margin = new Thickness(0, 4, 0, 4),
+                Margin = new Thickness(0, 6, 0, 6),
                 Background = System.Windows.Media.Brushes.Transparent,
                 Cursor = Cursors.Hand
             };
@@ -1488,14 +1823,14 @@ namespace OpenDimmer.UI
             {
                 Orientation = Orientation.Vertical,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 8, 0)
+                Margin = new Thickness(0, 0, 10, 0)
             };
 
             textStack.Children.Add(new TextBlock
             {
                 Text = title,
                 FontSize = 11.5,
-                FontWeight = FontWeights.Medium,
+                FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(ColTextPrimary),
                 TextWrapping = TextWrapping.Wrap
             });
@@ -1505,17 +1840,18 @@ namespace OpenDimmer.UI
                 Text = subtitle,
                 FontSize = 10,
                 Foreground = new SolidColorBrush(ColTextSecondary),
-                TextWrapping = TextWrapping.Wrap
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 1, 0, 0)
             });
 
-            // Modern Pill Switch (34x18px)
+            // Stitch Toggle Switch (36x20px, #4D8EFF when ON, #36393F when OFF)
             bool state = initialValue;
             var switchTrack = new Border
             {
-                Width = 34,
-                Height = 18,
-                CornerRadius = new CornerRadius(9),
-                Padding = new Thickness(2),
+                Width = 36,
+                Height = 20,
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(3),
                 VerticalAlignment = VerticalAlignment.Center
             };
 
@@ -1523,16 +1859,14 @@ namespace OpenDimmer.UI
             {
                 Width = 14,
                 Height = 14,
-                Fill = new SolidColorBrush(ColTextPrimary),
                 VerticalAlignment = VerticalAlignment.Center
             };
             switchTrack.Child = switchKnob;
 
             Action updateSwitchVisual = () =>
             {
-                switchTrack.Background = new SolidColorBrush(state ? ColPrimaryContainer : ColSurfaceInput);
-                switchTrack.BorderBrush = new SolidColorBrush(state ? ColPrimaryContainer : ColBorderSubtle);
-                switchTrack.BorderThickness = new Thickness(1);
+                switchTrack.Background = new SolidColorBrush(state ? ColPrimaryContainer : ColSurfaceSwitchOff);
+                switchKnob.Fill = new SolidColorBrush(state ? Colors.White : ColTextSecondary);
                 switchKnob.HorizontalAlignment = state ? HorizontalAlignment.Right : HorizontalAlignment.Left;
             };
             updateSwitchVisual();
@@ -1549,8 +1883,19 @@ namespace OpenDimmer.UI
             Grid.SetColumn(switchTrack, 1);
             row.Children.Add(textStack);
             row.Children.Add(switchTrack);
+            wrapper.Children.Add(row);
 
-            return row;
+            if (showBottomDivider)
+            {
+                wrapper.Children.Add(new Border
+                {
+                    Height = 1,
+                    Background = new SolidColorBrush(ColDivider),
+                    Margin = new Thickness(0, 1, 0, 1)
+                });
+            }
+
+            return wrapper;
         }
 
         private Button CreateActionButton(string label, string tooltip)
@@ -1562,7 +1907,7 @@ namespace OpenDimmer.UI
                 Height = 26,
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
-                Background = new SolidColorBrush(ColSurfaceInput),
+                Background = new SolidColorBrush(ColSurfaceSubCard),
                 Foreground = new SolidColorBrush(ColTextPrimary),
                 BorderBrush = new SolidColorBrush(ColBorderSubtle),
                 BorderThickness = new Thickness(1),
@@ -1584,7 +1929,7 @@ namespace OpenDimmer.UI
             btn.Template = template;
 
             btn.MouseEnter += (s, e) => btn.Background = new SolidColorBrush(ColSurfaceHover);
-            btn.MouseLeave += (s, e) => btn.Background = new SolidColorBrush(ColSurfaceInput);
+            btn.MouseLeave += (s, e) => btn.Background = new SolidColorBrush(ColSurfaceSubCard);
 
             return btn;
         }
@@ -1594,7 +1939,7 @@ namespace OpenDimmer.UI
             var footer = new Grid
             {
                 Background = new SolidColorBrush(ColSurfaceCanvas),
-                Margin = new Thickness(12, 0, 12, 2)
+                Margin = new Thickness(14, 0, 14, 4)
             };
 
             var leftStack = new StackPanel
@@ -1616,6 +1961,7 @@ namespace OpenDimmer.UI
             _footerStatusText = new TextBlock
             {
                 FontSize = 9.5,
+                FontWeight = FontWeights.Medium,
                 Foreground = new SolidColorBrush(ColTextSecondary),
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -1677,8 +2023,9 @@ namespace OpenDimmer.UI
                 for (int i = 0; i < screens.Length; i++)
                 {
                     var s = screens[i];
-                    sb.AppendLine(string.Format("DVC #{0}: [{1}] [BPP: {2}] [Primary: {3}]",
-                        i + 1, s.DeviceName, s.BitsPerPixel, s.Primary));
+                    var hw = DisplayInfoService.GetMonitorInfo(s, i + 1);
+                    sb.AppendLine(string.Format("DVC #{0}: [{1}] [{2}] [BPP: {3}] [Primary: {4}]",
+                        i + 1, s.DeviceName, hw.FriendlyName, s.BitsPerPixel, s.Primary));
                     sb.AppendLine(string.Format("BOU #{0}: {1}", i + 1, s.Bounds));
                 }
 
@@ -1805,8 +2152,8 @@ namespace OpenDimmer.UI
         private void ResetPositionToCorner()
         {
             WindowState = WindowState.Normal;
-            Width = 376;
-            Height = 456;
+            Width = 386;
+            Height = 468;
             var workArea = SystemParameters.WorkArea;
             Left = workArea.Right - Width - 16;
             Top = workArea.Bottom - Height - 16;

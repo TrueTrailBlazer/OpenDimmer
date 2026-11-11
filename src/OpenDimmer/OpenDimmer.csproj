@@ -49,6 +49,7 @@
     <Compile Include="Models\AppSettings.cs" />
     <Compile Include="Services\NativeMethods.cs" />
     <Compile Include="Services\AutoRunService.cs" />
+    <Compile Include="Services\DisplayInfoService.cs" />
     <Compile Include="Services\GammaService.cs" />
     <Compile Include="Services\SettingsService.cs" />
     <Compile Include="Services\OverlayManager.cs" />

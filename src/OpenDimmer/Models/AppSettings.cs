@@ -19,7 +19,8 @@ namespace OpenDimmer.Models
 
         public MasterSettings()
         {
-            Dim = 30;
+            On = true;
+            Dim = 35;
             Proportional = false;
         }
     }
@@ -31,12 +32,15 @@ namespace OpenDimmer.Models
         public bool On { get; set; }
         public int Dim { get; set; }
         public string Tint { get; set; }
+        public int TintIntensity { get; set; }
 
         public ScreenSettings()
         {
             DeviceName = string.Empty;
-            Dim = 30;
+            On = true;
+            Dim = 35;
             Tint = "000000";
+            TintIntensity = 60;
         }
     }
 
