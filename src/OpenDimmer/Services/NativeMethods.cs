@@ -118,5 +118,20 @@ namespace OpenDimmer.Services
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool DestroyIcon(IntPtr hIcon);
+
+        [DllImport("kernel32.dll")]
+        public static extern bool SetProcessWorkingSetSize(IntPtr proc, int min, int max);
+
+        public static void TrimMemoryWorkingSet()
+        {
+            try
+            {
+                using (var proc = System.Diagnostics.Process.GetCurrentProcess())
+                {
+                    SetProcessWorkingSetSize(proc.Handle, -1, -1);
+                }
+            }
+            catch { }
+        }
     }
 }

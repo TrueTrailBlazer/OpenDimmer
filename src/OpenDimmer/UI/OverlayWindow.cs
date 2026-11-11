@@ -54,7 +54,15 @@ namespace OpenDimmer.UI
                 Margin = new Thickness(32, 24, 0, 0),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
-                Visibility = Visibility.Collapsed
+                Visibility = Visibility.Collapsed,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Black,
+                    Direction = 315,
+                    ShadowDepth = 3,
+                    BlurRadius = 8,
+                    Opacity = 0.9
+                }
             };
 
             rootGrid.Children.Add(_boundaryBorder);

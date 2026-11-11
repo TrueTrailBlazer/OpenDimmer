@@ -13,6 +13,8 @@ namespace OpenDimmer.Services
         private readonly string _filePath;
         private readonly JavaScriptSerializer _serializer = new JavaScriptSerializer();
 
+        public string FilePath { get { return _filePath; } }
+
         public SettingsService(string filePath)
         {
             _filePath = filePath;
@@ -40,6 +42,7 @@ namespace OpenDimmer.Services
             }
 
             SyncScreensNonDestructively(settings);
+            Save(settings);
             return settings;
         }
 
@@ -79,13 +82,71 @@ namespace OpenDimmer.Services
             try
             {
                 settings.LastRun = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string json = _serializer.Serialize(settings);
-                File.WriteAllText(_filePath, json, Encoding.UTF8);
+                string rawJson = _serializer.Serialize(settings);
+                string prettyJson = PrettifyJson(rawJson);
+                File.WriteAllText(_filePath, prettyJson, Encoding.UTF8);
             }
             catch
             {
                 // Non-fatal persistence failure
             }
+        }
+
+        public static string PrettifyJson(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            bool inQuotes = false;
+            int indent = 0;
+
+            for (int i = 0; i < json.Length; i++)
+            {
+                char ch = json[i];
+                if (ch == '"' && (i == 0 || json[i - 1] != '\\'))
+                {
+                    inQuotes = !inQuotes;
+                    sb.Append(ch);
+                }
+                else if (!inQuotes)
+                {
+                    if (ch == '{' || ch == '[')
+                    {
+                        sb.Append(ch);
+                        sb.AppendLine();
+                        indent++;
+                        sb.Append(new string(' ', indent * 2));
+                    }
+                    else if (ch == '}' || ch == ']')
+                    {
+                        sb.AppendLine();
+                        indent = Math.Max(0, indent - 1);
+                        sb.Append(new string(' ', indent * 2));
+                        sb.Append(ch);
+                    }
+                    else if (ch == ',')
+                    {
+                        sb.Append(ch);
+                        sb.AppendLine();
+                        sb.Append(new string(' ', indent * 2));
+                    }
+                    else if (ch == ':')
+                    {
+                        sb.Append(": ");
+                    }
+                    else
+                    {
+                        sb.Append(ch);
+                    }
+                }
+                else
+                {
+                    sb.Append(ch);
+                }
+            }
+
+            return sb.ToString();
         }
     }
 }
