@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -66,13 +68,83 @@ namespace OpenDimmer.Services
                     string.Equals(s.DeviceName, screen.DeviceName, StringComparison.OrdinalIgnoreCase))
                     ?? _settings.Screens.First(s => s.Id == id);
 
-                var overlay = new OverlayWindow(id, screen.DeviceName, screen.Bounds);
+                Rectangle targetBounds = AdjustBoundsForAutoHideTaskbar(screen.Bounds);
+                var overlay = new OverlayWindow(id, screen.DeviceName, targetBounds);
                 overlay.Show();
-                overlay.UpdateBounds(screen.Bounds);
-                overlay.ApplyDimming(cfg.On, cfg.Dim, cfg.Tint);
+                overlay.UpdateBounds(targetBounds);
+                ApplyScreenDimming(overlay, cfg);
                 overlay.SetIndicators(_settings.ShowIds, _settings.ShowBoundaries);
                 _overlays.Add(overlay);
             }
+        }
+
+        private void ApplyScreenDimming(OverlayWindow overlay, ScreenSettings cfg)
+        {
+            if (_settings.UseHardwareGamma && cfg.On && cfg.Dim > 0)
+            {
+                int hwDim = Math.Min(GammaService.MaxHardwareDimPercent, cfg.Dim);
+                bool hwApplied = GammaService.ApplyMonitorGamma(overlay.DeviceName, true, hwDim, cfg.Tint);
+                if (hwApplied)
+                {
+                    int remainingOverlayDim = Math.Max(0, cfg.Dim - (int)(hwDim * 0.75));
+                    overlay.ApplyDimming(remainingOverlayDim > 0, remainingOverlayDim, cfg.Tint);
+                    return;
+                }
+            }
+            else
+            {
+                GammaService.ApplyMonitorGamma(overlay.DeviceName, false, 0, "000000");
+            }
+
+            overlay.ApplyDimming(cfg.On, cfg.Dim, cfg.Tint);
+        }
+
+        private Rectangle AdjustBoundsForAutoHideTaskbar(Rectangle screenBounds)
+        {
+            if (!_settings.AvoidTaskbarAutoHideLock)
+                return screenBounds;
+
+            try
+            {
+                var abd = new NativeMethods.APPBARDATA();
+                abd.cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA));
+                uint state = NativeMethods.SHAppBarMessage(NativeMethods.ABM_GETSTATE, ref abd);
+                if ((state & NativeMethods.ABS_AUTOHIDE) == 0)
+                    return screenBounds;
+
+                var posData = new NativeMethods.APPBARDATA();
+                posData.cbSize = Marshal.SizeOf(typeof(NativeMethods.APPBARDATA));
+                if (NativeMethods.SHAppBarMessage(NativeMethods.ABM_GETTASKBARPOS, ref posData) == 0)
+                    return screenBounds;
+
+                var tbRect = new Rectangle(
+                    posData.rc.left,
+                    posData.rc.top,
+                    posData.rc.right - posData.rc.left,
+                    posData.rc.bottom - posData.rc.top);
+
+                if (!screenBounds.IntersectsWith(tbRect))
+                    return screenBounds;
+
+                // Leave a 1px uncovered trigger strip on the auto-hide taskbar edge
+                switch (posData.uEdge)
+                {
+                    case NativeMethods.ABE_BOTTOM:
+                        return new Rectangle(screenBounds.X, screenBounds.Y, screenBounds.Width, Math.Max(1, screenBounds.Height - 1));
+                    case NativeMethods.ABE_TOP:
+                        return new Rectangle(screenBounds.X, screenBounds.Y + 1, screenBounds.Width, Math.Max(1, screenBounds.Height - 1));
+                    case NativeMethods.ABE_LEFT:
+                        return new Rectangle(screenBounds.X + 1, screenBounds.Y, Math.Max(1, screenBounds.Width - 1), screenBounds.Height);
+                    case NativeMethods.ABE_RIGHT:
+                        return new Rectangle(screenBounds.X, screenBounds.Y, Math.Max(1, screenBounds.Width - 1), screenBounds.Height);
+                }
+            }
+            catch
+            {
+                // Fallback to full screen bounds
+            }
+
+            return screenBounds;
         }
 
         public void RefreshOverlay(int screenId)
@@ -81,19 +153,27 @@ namespace OpenDimmer.Services
             var overlay = _overlays.FirstOrDefault(o => o.ScreenId == screenId);
             if (cfg != null && overlay != null)
             {
-                overlay.ApplyDimming(cfg.On, cfg.Dim, cfg.Tint);
+                ApplyScreenDimming(overlay, cfg);
                 PromoteControlPanelIfNeeded();
             }
         }
 
         public void RefreshAllOverlays()
         {
+            var screens = Screen.AllScreens;
             foreach (var overlay in _overlays)
             {
+                var screen = screens.FirstOrDefault(s =>
+                    string.Equals(s.DeviceName, overlay.DeviceName, StringComparison.OrdinalIgnoreCase));
+                if (screen != null)
+                {
+                    overlay.UpdateBounds(AdjustBoundsForAutoHideTaskbar(screen.Bounds));
+                }
+
                 var cfg = _settings.Screens.FirstOrDefault(s => s.Id == overlay.ScreenId);
                 if (cfg != null)
                 {
-                    overlay.ApplyDimming(cfg.On, cfg.Dim, cfg.Tint);
+                    ApplyScreenDimming(overlay, cfg);
                 }
                 overlay.SetIndicators(_settings.ShowIds, _settings.ShowBoundaries);
             }
@@ -190,6 +270,8 @@ namespace OpenDimmer.Services
                 NativeMethods.UnhookWinEvent(_objectShowHook);
                 _objectShowHook = IntPtr.Zero;
             }
+
+            GammaService.RestoreAllMonitorsGamma();
 
             foreach (var overlay in _overlays)
             {

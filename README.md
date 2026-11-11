@@ -26,7 +26,9 @@ OpenDimmer/
         ├── Models/
         │   └── AppSettings.cs        # Portable JSON configuration models
         ├── Services/
-        │   ├── NativeMethods.cs      # Win32 P/Invoke (Z-Order, WinEventHook, Gamma, DPI)
+        │   ├── NativeMethods.cs      # Win32 P/Invoke (Z-Order, WinEventHook, Gamma, AppBar)
+        │   ├── AutoRunService.cs     # Windows startup registry integration
+        │   ├── GammaService.cs       # Per-monitor hardware LUT gamma & warm tint
         │   ├── SettingsService.cs    # Non-destructive settings persistence
         │   └── OverlayManager.cs     # Multi-monitor overlay lifecycle & Z-Order enforcement
         └── UI/

@@ -49,6 +49,8 @@ namespace OpenDimmer.Models
         public bool NonDimmableWindow { get; set; }
         public bool CloseHidesToTray { get; set; }
         public bool ShowInTaskbar { get; set; }
+        public bool UseHardwareGamma { get; set; }
+        public bool AvoidTaskbarAutoHideLock { get; set; }
         public MasterSettings Master { get; set; }
         public List<ScreenSettings> Screens { get; set; }
         public string LastRun { get; set; }
@@ -60,6 +62,8 @@ namespace OpenDimmer.Models
             NonDimmableWindow = true;
             CloseHidesToTray = true;
             ShowInTaskbar = true;
+            UseHardwareGamma = false;
+            AvoidTaskbarAutoHideLock = true;
             Master = new MasterSettings();
             Screens = new List<ScreenSettings>();
             LastRun = string.Empty;
