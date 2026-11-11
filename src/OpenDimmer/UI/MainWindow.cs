@@ -105,6 +105,10 @@ namespace OpenDimmer.UI
         private Forms.NotifyIcon _notifyIcon;
         private IntPtr _trayIconHandle;
 
+        private Grid _outerGrid;
+        private Grid _dropdownOverlayLayer;
+        private Border _activeDropdownAnchor;
+        private ContentControl _activeDropdownChevron;
         private Grid _screensView;
         private UniformGrid _channelsGrid;
         private ScrollViewer _settingsScroll;
@@ -154,7 +158,7 @@ namespace OpenDimmer.UI
             Background = System.Windows.Media.Brushes.Transparent;
             FontFamily = new System.Windows.Media.FontFamily("Segoe UI");
 
-            MinWidth = 340;
+            MinWidth = 370;
             MinHeight = 410;
             Width = 386;
             Height = 468;
@@ -181,6 +185,7 @@ namespace OpenDimmer.UI
             {
                 Dispatcher.Invoke(() =>
                 {
+                    CloseTintPresetDropdown();
                     RebuildChannelStrips();
                     RebuildTintSettingsRows();
                 });
@@ -188,6 +193,7 @@ namespace OpenDimmer.UI
 
             SizeChanged += (s, e) =>
             {
+                CloseTintPresetDropdown();
                 if (IsLoaded && WindowState == WindowState.Normal)
                 {
                     _settings.Position.Width = Width;
@@ -282,30 +288,47 @@ namespace OpenDimmer.UI
                 ClipToBounds = true
             };
 
-            var outerGrid = new Grid();
-            outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(42) });
-            outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(24) });
+            _outerGrid = new Grid();
+            _outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(42) });
+            _outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            _outerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(24) });
 
             var header = BuildHeaderBar();
             Grid.SetRow(header, 0);
-            outerGrid.Children.Add(header);
+            _outerGrid.Children.Add(header);
 
             var mainContent = new Grid { Margin = new Thickness(10, 2, 10, 4) };
             _screensView = BuildScreensView();
             _settingsScroll = BuildSettingsView();
+            _settingsScroll.ScrollChanged += (s, e) => CloseTintPresetDropdown();
 
             mainContent.Children.Add(_screensView);
             mainContent.Children.Add(_settingsScroll);
 
             Grid.SetRow(mainContent, 1);
-            outerGrid.Children.Add(mainContent);
+            _outerGrid.Children.Add(mainContent);
 
             var footer = BuildFooterBar();
             Grid.SetRow(footer, 2);
-            outerGrid.Children.Add(footer);
+            _outerGrid.Children.Add(footer);
 
-            windowFrame.Child = outerGrid;
+            // In-Window Dropdown Overlay Layer (immune to Win32 HWND Z-Order conflicts)
+            _dropdownOverlayLayer = new Grid
+            {
+                Background = System.Windows.Media.Brushes.Transparent,
+                Visibility = Visibility.Collapsed
+            };
+            _dropdownOverlayLayer.MouseLeftButtonDown += (s, e) =>
+            {
+                CloseTintPresetDropdown();
+                e.Handled = true;
+            };
+            Grid.SetRow(_dropdownOverlayLayer, 0);
+            Grid.SetRowSpan(_dropdownOverlayLayer, 3);
+            Panel.SetZIndex(_dropdownOverlayLayer, 999);
+            _outerGrid.Children.Add(_dropdownOverlayLayer);
+
+            windowFrame.Child = _outerGrid;
             Content = windowFrame;
 
             RebuildChannelStrips();
@@ -321,12 +344,13 @@ namespace OpenDimmer.UI
                 Background = new SolidColorBrush(ColSurfaceCanvas),
                 Margin = new Thickness(12, 0, 8, 0)
             };
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             header.MouseLeftButtonDown += (s, e) =>
             {
+                CloseTintPresetDropdown();
                 if (e.ClickCount == 2)
                 {
                     ToggleMaximizeRestore();
@@ -341,7 +365,8 @@ namespace OpenDimmer.UI
             var brandStack = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 0)
             };
 
             var brandIcon = CreateVectorIcon(SvgBrightnessMedium, ColPrimary, 17, 17);
@@ -394,7 +419,8 @@ namespace OpenDimmer.UI
             {
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 0, 0)
             };
 
             var btnMin = CreateWindowControlButton("—", "Minimize", false);
@@ -1778,43 +1804,42 @@ namespace OpenDimmer.UI
                     }
                 };
 
-                // Rich Stitch WPF Popup Dropdown ("TINT PRESET | 4 Modes")
+                // Rich Stitch In-Window Dropdown ("TINT PRESET | 4 Modes")
                 dropBorder.MouseLeftButtonDown += (s, e) =>
                 {
+                    if (_dropdownOverlayLayer.Visibility == Visibility.Visible && _activeDropdownAnchor == dropBorder)
+                    {
+                        CloseTintPresetDropdown();
+                        e.Handled = true;
+                        return;
+                    }
+
+                    CloseTintPresetDropdown();
+                    _activeDropdownAnchor = dropBorder;
+                    _activeDropdownChevron = dropChevHolder;
                     dropChevHolder.Content = CreateVectorIcon(SvgChevronUp, ColTextPrimary, 11, 11);
-
-                    var popup = new Popup
-                    {
-                        PlacementTarget = dropBorder,
-                        Placement = PlacementMode.Bottom,
-                        HorizontalOffset = -90,
-                        VerticalOffset = 4,
-                        AllowsTransparency = true,
-                        StaysOpen = false,
-                        PopupAnimation = PopupAnimation.Fade
-                    };
-
-                    popup.Closed += (ps, pe) =>
-                    {
-                        dropChevHolder.Content = CreateVectorIcon(SvgChevronDown, ColTextSecondary, 11, 11);
-                    };
 
                     var popOuter = new Border
                     {
                         Width = 224,
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        VerticalAlignment = VerticalAlignment.Top,
                         Background = new SolidColorBrush(ColSurfacePopup),
                         BorderBrush = new SolidColorBrush(ColBorderSubtle),
                         BorderThickness = new Thickness(1),
                         CornerRadius = new CornerRadius(8),
-                        Margin = new Thickness(8),
                         ClipToBounds = true,
                         Effect = new DropShadowEffect
                         {
                             Color = Colors.Black,
-                            BlurRadius = 14,
-                            ShadowDepth = 4,
-                            Opacity = 0.75
+                            BlurRadius = 16,
+                            ShadowDepth = 5,
+                            Opacity = 0.80
                         }
+                    };
+                    popOuter.MouseLeftButtonDown += (ps, pe) =>
+                    {
+                        pe.Handled = true;
                     };
 
                     var popStack = new StackPanel { Orientation = Orientation.Vertical };
@@ -1954,7 +1979,7 @@ namespace OpenDimmer.UI
                             _overlayManager.RefreshOverlay(capturedScreenId);
                             _settingsService.Save(_settings);
 
-                            popup.IsOpen = false;
+                            CloseTintPresetDropdown();
                             me.Handled = true;
                         };
 
@@ -1963,14 +1988,46 @@ namespace OpenDimmer.UI
                     }
 
                     popOuter.Child = popStack;
-                    popup.Child = popOuter;
-                    popup.IsOpen = true;
+
+                    // Position right-aligned under dropBorder within _outerGrid
+                    System.Windows.Point anchorBottomRight = dropBorder.TranslatePoint(new System.Windows.Point(dropBorder.ActualWidth, dropBorder.ActualHeight + 4), _outerGrid);
+                    double menuWidth = 224.0;
+                    double menuHeight = 220.0;
+                    double availW = Math.Max(300.0, _outerGrid.ActualWidth);
+                    double availH = Math.Max(300.0, _outerGrid.ActualHeight);
+
+                    double left = Math.Max(10.0, Math.Min(availW - menuWidth - 10.0, anchorBottomRight.X - menuWidth));
+                    double top = anchorBottomRight.Y;
+                    if (top + menuHeight > availH - 8.0)
+                    {
+                        top = Math.Max(42.0, availH - menuHeight - 8.0);
+                    }
+
+                    popOuter.Margin = new Thickness(left, top, 0, 0);
+                    _dropdownOverlayLayer.Children.Clear();
+                    _dropdownOverlayLayer.Children.Add(popOuter);
+                    _dropdownOverlayLayer.Visibility = Visibility.Visible;
                     e.Handled = true;
                 };
 
                 subStack.Children.Add(intensityGrid);
                 subCard.Child = subStack;
                 _tintSettingsHost.Children.Add(subCard);
+            }
+        }
+
+        private void CloseTintPresetDropdown()
+        {
+            if (_activeDropdownChevron != null)
+            {
+                _activeDropdownChevron.Content = CreateVectorIcon(SvgChevronDown, ColTextSecondary, 11, 11);
+                _activeDropdownChevron = null;
+            }
+            _activeDropdownAnchor = null;
+            if (_dropdownOverlayLayer != null)
+            {
+                _dropdownOverlayLayer.Children.Clear();
+                _dropdownOverlayLayer.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -2159,6 +2216,7 @@ namespace OpenDimmer.UI
 
         private void SwitchView(string view)
         {
+            CloseTintPresetDropdown();
             bool isScreens = view == "screens";
             _screensView.Visibility = isScreens ? Visibility.Visible : Visibility.Collapsed;
             _settingsScroll.Visibility = isScreens ? Visibility.Collapsed : Visibility.Visible;
@@ -2296,13 +2354,13 @@ namespace OpenDimmer.UI
 
         private void RestoreOrResetPosition()
         {
-            if (_settings.Position.Width.HasValue && _settings.Position.Width.Value >= MinWidth)
+            if (_settings.Position.Width.HasValue)
             {
-                Width = _settings.Position.Width.Value;
+                Width = Math.Max(MinWidth, _settings.Position.Width.Value);
             }
-            if (_settings.Position.Height.HasValue && _settings.Position.Height.Value >= MinHeight)
+            if (_settings.Position.Height.HasValue)
             {
-                Height = _settings.Position.Height.Value;
+                Height = Math.Max(MinHeight, _settings.Position.Height.Value);
             }
 
             if (_settings.Position.Left.HasValue && _settings.Position.Top.HasValue)
