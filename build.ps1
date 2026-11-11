@@ -14,6 +14,7 @@ $wpfDir = Join-Path $fwDir "WPF"
 
 $sources = Get-ChildItem -Path $srcDir -Filter "*.cs" -Recurse | Select-Object -ExpandProperty FullName
 $manifest = Join-Path $srcDir "app.manifest"
+$icoFile = Join-Path $root "assets\app.ico"
 $outExe = Join-Path $distDir "OpenDimmer.exe"
 
 Write-Host "Compiling OpenDimmer..." -ForegroundColor Cyan
@@ -21,6 +22,8 @@ Write-Host "Compiling OpenDimmer..." -ForegroundColor Cyan
 & $csc /nologo /target:winexe /optimize+ `
     /out:$outExe `
     /win32manifest:$manifest `
+    /win32icon:"$icoFile" `
+    /resource:"$icoFile,OpenDimmer.app.ico" `
     /r:"$fwDir\System.dll" `
     /r:"$fwDir\System.Core.dll" `
     /r:"$fwDir\System.Drawing.dll" `
