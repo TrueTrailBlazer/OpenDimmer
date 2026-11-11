@@ -12,6 +12,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Shell;
 using OpenDimmer.Models;
 using OpenDimmer.Services;
 using DrawingColor = System.Drawing.Color;
@@ -55,12 +56,16 @@ namespace OpenDimmer.UI
         private Forms.NotifyIcon _notifyIcon;
         private IntPtr _trayIconHandle;
 
-        private StackPanel _screensPanel;
+        private UniformGrid _screensGrid;
+        private Border _tintView;
+        private StackPanel _tintScreensHost;
         private Border _optionsView;
         private Border _aboutView;
         private Border _debugView;
         private TextBox _txtDebug;
+
         private Button _tabBtnScreens;
+        private Button _tabBtnTint;
         private Button _tabBtnOptions;
         private Button _tabBtnAbout;
         private Button _tabBtnDebug;
@@ -71,7 +76,13 @@ namespace OpenDimmer.UI
         private bool _suppressEvents;
 
         private static readonly string[] TintCodes = new[] { "000000", "2B1300", "330D00", "1F190D" };
-        private static readonly string[] TintNames = new[] { "Neutral Black", "Warm Amber (Night Light)", "Deep Ember", "Soft Sepia" };
+        private static readonly string[] TintNames = new[]
+        {
+            "Neutral Black (Default)",
+            "Warm Amber (Night Light)",
+            "Deep Ember (Low Blue Light)",
+            "Soft Sepia (Reading)"
+        };
 
         private sealed class ScreenStripControls
         {
@@ -79,7 +90,6 @@ namespace OpenDimmer.UI
             public CheckBox CheckBox;
             public Slider Slider;
             public TextBox TextBox;
-            public Button TintButton;
         }
 
         private readonly List<ScreenStripControls> _screenStrips = new List<ScreenStripControls>();
@@ -92,12 +102,25 @@ namespace OpenDimmer.UI
 
             Title = "OpenDimmer";
             WindowStyle = WindowStyle.None;
-            ResizeMode = ResizeMode.NoResize;
+            ResizeMode = ResizeMode.CanResizeWithGrip;
             AllowsTransparency = true;
-            Background = new SolidColorBrush(MediaColor.FromRgb(28, 34, 42));
-            BorderBrush = new SolidColorBrush(MediaColor.FromRgb(15, 19, 24));
+            Background = new SolidColorBrush(MediaColor.FromRgb(30, 34, 40));
+            BorderBrush = new SolidColorBrush(MediaColor.FromRgb(58, 66, 76));
             BorderThickness = new Thickness(1);
-            Height = 326;
+
+            MinWidth = 280;
+            MinHeight = 310;
+            Width = 340;
+            Height = 350;
+
+            WindowChrome.SetWindowChrome(this, new WindowChrome
+            {
+                CaptionHeight = 0,
+                ResizeBorderThickness = new Thickness(6),
+                GlassFrameThickness = new Thickness(0),
+                CornerRadius = new CornerRadius(0)
+            });
+
             Topmost = _settings.NonDimmableWindow;
             ShowInTaskbar = _settings.ShowInTaskbar;
 
@@ -112,15 +135,17 @@ namespace OpenDimmer.UI
                 Dispatcher.Invoke(() =>
                 {
                     RebuildScreenStrips();
+                    RebuildTintControls();
                     PopulateDebugLog();
                 });
             };
 
-            MouseLeftButtonDown += (s, e) =>
+            SizeChanged += (s, e) =>
             {
-                if (_settings.MovableWindow && e.ButtonState == MouseButtonState.Pressed)
+                if (IsLoaded && WindowState == WindowState.Normal)
                 {
-                    try { DragMove(); } catch { }
+                    _settings.Position.Width = Width;
+                    _settings.Position.Height = Height;
                 }
             };
 
@@ -142,18 +167,35 @@ namespace OpenDimmer.UI
 
         private void BuildUserInterface()
         {
-            var root = new Grid { Margin = new Thickness(8) };
+            var root = new Grid { Margin = new Thickness(10, 8, 10, 10) };
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
-            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(30) });
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-            // Row 0: Title Bar
-            var header = new DockPanel { LastChildFill = false };
+            // Row 0: Draggable Title Bar
+            var header = new DockPanel
+            {
+                LastChildFill = false,
+                Background = System.Windows.Media.Brushes.Transparent
+            };
+            header.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ClickCount == 2)
+                {
+                    ToggleMaximizeRestore();
+                }
+                else if (_settings.MovableWindow && e.ButtonState == MouseButtonState.Pressed)
+                {
+                    try { DragMove(); } catch { }
+                }
+            };
+
             var titleText = new TextBlock
             {
                 Text = "OpenDimmer",
-                Foreground = new SolidColorBrush(MediaColor.FromRgb(215, 224, 234)),
-                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(MediaColor.FromRgb(220, 228, 238)),
+                FontWeight = FontWeights.Bold,
+                FontSize = 13,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(4, 0, 0, 0)
             };
@@ -164,6 +206,11 @@ namespace OpenDimmer.UI
             btnClose.Click += OnBtnCloseClick;
             DockPanel.SetDock(btnClose, Dock.Right);
             header.Children.Add(btnClose);
+
+            var btnMax = CreateTitleButton("▢", "Maximize / Restore");
+            btnMax.Click += (s, e) => ToggleMaximizeRestore();
+            DockPanel.SetDock(btnMax, Dock.Right);
+            header.Children.Add(btnMax);
 
             var btnMin = CreateTitleButton("—", "Minimise");
             btnMin.Click += OnBtnMinimiseClick;
@@ -177,15 +224,21 @@ namespace OpenDimmer.UI
             var navBar = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin = new Thickness(2, 2, 2, 4)
+                Margin = new Thickness(0, 3, 0, 5)
             };
 
             _tabBtnScreens = CreateTabButton("Screens", true);
+            _tabBtnTint = CreateTabButton("Color Filter", false);
             _tabBtnOptions = CreateTabButton("Options", false);
             _tabBtnAbout = CreateTabButton("About", false);
             _tabBtnDebug = CreateTabButton("Debug", false);
 
             _tabBtnScreens.Click += (s, e) => SwitchView("screens");
+            _tabBtnTint.Click += (s, e) =>
+            {
+                RebuildTintControls();
+                SwitchView("tint");
+            };
             _tabBtnOptions.Click += (s, e) => SwitchView("options");
             _tabBtnAbout.Click += (s, e) => SwitchView("about");
             _tabBtnDebug.Click += (s, e) =>
@@ -195,6 +248,7 @@ namespace OpenDimmer.UI
             };
 
             navBar.Children.Add(_tabBtnScreens);
+            navBar.Children.Add(_tabBtnTint);
             navBar.Children.Add(_tabBtnOptions);
             navBar.Children.Add(_tabBtnAbout);
             navBar.Children.Add(_tabBtnDebug);
@@ -205,17 +259,19 @@ namespace OpenDimmer.UI
             // Row 2: Content Area
             var contentGrid = new Grid();
 
-            _screensPanel = new StackPanel
+            _screensGrid = new UniformGrid
             {
-                Orientation = Orientation.Horizontal,
+                Rows = 1,
                 Margin = new Thickness(0, 2, 0, 0)
             };
 
+            _tintView = BuildTintView();
             _optionsView = BuildOptionsView();
             _aboutView = BuildAboutView();
             _debugView = BuildDebugView();
 
-            contentGrid.Children.Add(_screensPanel);
+            contentGrid.Children.Add(_screensGrid);
+            contentGrid.Children.Add(_tintView);
             contentGrid.Children.Add(_optionsView);
             contentGrid.Children.Add(_aboutView);
             contentGrid.Children.Add(_debugView);
@@ -225,29 +281,36 @@ namespace OpenDimmer.UI
             Content = root;
 
             RebuildScreenStrips();
+            RebuildTintControls();
             SwitchView("screens");
+        }
+
+        private void ToggleMaximizeRestore()
+        {
+            WindowState = WindowState == WindowState.Maximized
+                ? WindowState.Normal
+                : WindowState.Maximized;
         }
 
         private void SwitchView(string view)
         {
             bool isScreens = view == "screens";
+            bool isTint = view == "tint";
             bool isOptions = view == "options";
             bool isAbout = view == "about";
             bool isDebug = view == "debug";
 
-            _screensPanel.Visibility = isScreens ? Visibility.Visible : Visibility.Collapsed;
+            _screensGrid.Visibility = isScreens ? Visibility.Visible : Visibility.Collapsed;
+            _tintView.Visibility = isTint ? Visibility.Visible : Visibility.Collapsed;
             _optionsView.Visibility = isOptions ? Visibility.Visible : Visibility.Collapsed;
             _aboutView.Visibility = isAbout ? Visibility.Visible : Visibility.Collapsed;
             _debugView.Visibility = isDebug ? Visibility.Visible : Visibility.Collapsed;
 
             StyleTabButton(_tabBtnScreens, isScreens);
+            StyleTabButton(_tabBtnTint, isTint);
             StyleTabButton(_tabBtnOptions, isOptions);
             StyleTabButton(_tabBtnAbout, isAbout);
             StyleTabButton(_tabBtnDebug, isDebug);
-
-            int activeCount = Forms.Screen.AllScreens.Length;
-            int stripsWidth = Math.Max(246, (activeCount + 1) * 74 + 24);
-            Width = isScreens ? stripsWidth : Math.Max(296, stripsWidth);
         }
 
         private Button CreateTabButton(string text, bool active)
@@ -257,7 +320,7 @@ namespace OpenDimmer.UI
                 Content = text,
                 Height = 22,
                 Padding = new Thickness(8, 0, 8, 0),
-                Margin = new Thickness(0, 0, 4, 0),
+                Margin = new Thickness(0, 0, 3, 0),
                 BorderThickness = new Thickness(0),
                 Cursor = Cursors.Hand,
                 FontSize = 11.5
@@ -270,7 +333,7 @@ namespace OpenDimmer.UI
         {
             btn.Background = new SolidColorBrush(active
                 ? MediaColor.FromRgb(58, 122, 254)
-                : MediaColor.FromRgb(38, 46, 56));
+                : MediaColor.FromRgb(42, 48, 58));
             btn.Foreground = new SolidColorBrush(active
                 ? Colors.White
                 : MediaColor.FromRgb(185, 195, 208));
@@ -286,7 +349,7 @@ namespace OpenDimmer.UI
                 Width = 26,
                 Height = 22,
                 Margin = new Thickness(2, 0, 0, 0),
-                Background = new SolidColorBrush(MediaColor.FromRgb(40, 48, 58)),
+                Background = new SolidColorBrush(MediaColor.FromRgb(42, 48, 58)),
                 Foreground = new SolidColorBrush(MediaColor.FromRgb(210, 220, 230)),
                 BorderThickness = new Thickness(0),
                 Cursor = Cursors.Hand
@@ -296,19 +359,27 @@ namespace OpenDimmer.UI
         private void RebuildScreenStrips()
         {
             _suppressEvents = true;
-            _screensPanel.Children.Clear();
+            _screensGrid.Children.Clear();
             _screenStrips.Clear();
 
-            Button masterDummyTint;
-            var masterCard = BuildStripCard("M", "Master Control", _settings.Master.On, _settings.Master.Dim, null,
-                out _chkMaster, out _sldMaster, out _txtMaster, out masterDummyTint);
+            var masterCard = BuildStripCard(
+                "M",
+                "Master control (toggles and adjusts all screens)",
+                true,
+                _settings.Master.On,
+                _settings.Master.Dim,
+                out _chkMaster,
+                out _sldMaster,
+                out _txtMaster);
 
             _chkMaster.Click += (s, e) => OnMasterToggled();
             _sldMaster.ValueChanged += (s, e) => OnMasterValueChanged((int)Math.Round(e.NewValue));
             BindTextBoxToSlider(_txtMaster, _sldMaster);
-            _screensPanel.Children.Add(masterCard);
+            _screensGrid.Children.Add(masterCard);
 
             int activeCount = Forms.Screen.AllScreens.Length;
+            _screensGrid.Columns = activeCount + 1;
+
             for (int i = 0; i < activeCount; i++)
             {
                 int screenId = i + 1;
@@ -318,17 +389,22 @@ namespace OpenDimmer.UI
                 CheckBox chk;
                 Slider sld;
                 TextBox txt;
-                Button btnTint;
-                var card = BuildStripCard(screenId.ToString(), "Screen #" + screenId + " (" + cfg.DeviceName + ")", cfg.On, cfg.Dim, cfg.Tint,
-                    out chk, out sld, out txt, out btnTint);
+                var card = BuildStripCard(
+                    screenId.ToString(),
+                    "Screen #" + screenId + " (" + cfg.DeviceName + ")",
+                    false,
+                    cfg.On,
+                    cfg.Dim,
+                    out chk,
+                    out sld,
+                    out txt);
 
                 var strip = new ScreenStripControls
                 {
                     ScreenId = screenId,
                     CheckBox = chk,
                     Slider = sld,
-                    TextBox = txt,
-                    TintButton = btnTint
+                    TextBox = txt
                 };
                 _screenStrips.Add(strip);
 
@@ -337,18 +413,9 @@ namespace OpenDimmer.UI
                 sld.ValueChanged += (s, e) => OnScreenValueChanged(capturedId, (int)Math.Round(e.NewValue));
                 BindTextBoxToSlider(txt, sld);
 
-                if (btnTint != null)
-                {
-                    btnTint.Click += (s, e) => OnScreenTintCycled(capturedId);
-                }
-
-                _screensPanel.Children.Add(card);
+                _screensGrid.Children.Add(card);
             }
 
-            if (_screensPanel.Visibility == Visibility.Visible)
-            {
-                Width = Math.Max(246, (activeCount + 1) * 74 + 24);
-            }
             _suppressEvents = false;
         }
 
@@ -377,30 +444,31 @@ namespace OpenDimmer.UI
         private Border BuildStripCard(
             string label,
             string tooltip,
+            bool isMaster,
             bool isOn,
             int dimValue,
-            string tintHex,
             out CheckBox checkBox,
             out Slider slider,
-            out TextBox textBox,
-            out Button tintButton)
+            out TextBox textBox)
         {
             var card = new Border
             {
-                Width = 66,
-                Margin = new Thickness(3, 1, 3, 1),
+                Margin = new Thickness(4, 2, 4, 2),
                 CornerRadius = new CornerRadius(4),
-                Background = new SolidColorBrush(MediaColor.FromRgb(35, 43, 53)),
-                BorderBrush = new SolidColorBrush(MediaColor.FromRgb(22, 27, 34)),
+                Background = new SolidColorBrush(isMaster
+                    ? MediaColor.FromRgb(42, 54, 70)
+                    : MediaColor.FromRgb(38, 43, 50)),
+                BorderBrush = new SolidColorBrush(isMaster
+                    ? MediaColor.FromRgb(58, 76, 98)
+                    : MediaColor.FromRgb(24, 28, 34)),
                 BorderThickness = new Thickness(1),
-                Padding = new Thickness(4, 5, 4, 5)
+                Padding = new Thickness(6, 10, 6, 10)
             };
 
-            var stack = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
+            var cardGrid = new Grid();
+            cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            cardGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            cardGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
             checkBox = new CheckBox
             {
@@ -408,14 +476,17 @@ namespace OpenDimmer.UI
                 ToolTip = tooltip,
                 IsChecked = isOn,
                 Foreground = new SolidColorBrush(Colors.White),
+                FontWeight = FontWeights.SemiBold,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 6)
+                Margin = new Thickness(0, 0, 0, 10)
             };
 
             slider = new Slider
             {
                 Orientation = Orientation.Vertical,
-                Height = 136,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                MinHeight = 110,
                 Minimum = 0,
                 Maximum = 90,
                 SmallChange = 1,
@@ -424,55 +495,32 @@ namespace OpenDimmer.UI
                 TickPlacement = TickPlacement.Both,
                 Value = dimValue,
                 IsEnabled = isOn,
-                Opacity = isOn ? 1.0 : 0.4,
-                HorizontalAlignment = HorizontalAlignment.Center
+                Opacity = isOn ? 1.0 : 0.45
             };
 
             textBox = new TextBox
             {
-                Width = 38,
-                Height = 20,
-                Margin = new Thickness(0, 6, 0, 0),
+                Width = 44,
+                Height = 24,
+                Margin = new Thickness(0, 10, 0, 0),
                 Text = dimValue.ToString(),
                 IsEnabled = isOn,
                 TextAlignment = TextAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
-                Background = new SolidColorBrush(MediaColor.FromRgb(210, 215, 222)),
-                FontWeight = FontWeights.Medium,
-                FontSize = 11.5
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Background = new SolidColorBrush(MediaColor.FromRgb(205, 210, 218)),
+                Foreground = new SolidColorBrush(MediaColor.FromRgb(20, 24, 28)),
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 12
             };
 
-            stack.Children.Add(checkBox);
-            stack.Children.Add(slider);
-            stack.Children.Add(textBox);
+            Grid.SetRow(checkBox, 0);
+            Grid.SetRow(slider, 1);
+            Grid.SetRow(textBox, 2);
 
-            if (tintHex != null)
-            {
-                tintButton = new Button
-                {
-                    Width = 38,
-                    Height = 14,
-                    Margin = new Thickness(0, 5, 0, 0),
-                    BorderThickness = new Thickness(1),
-                    BorderBrush = new SolidColorBrush(MediaColor.FromRgb(90, 102, 118)),
-                    Cursor = Cursors.Hand
-                };
-                UpdateTintButtonVisual(tintButton, tintHex);
-                stack.Children.Add(tintButton);
-            }
-            else
-            {
-                tintButton = null;
-                var masterTag = new TextBlock
-                {
-                    Text = "MASTER",
-                    FontSize = 9,
-                    Foreground = new SolidColorBrush(MediaColor.FromRgb(140, 152, 168)),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 6, 0, 0)
-                };
-                stack.Children.Add(masterTag);
-            }
+            cardGrid.Children.Add(checkBox);
+            cardGrid.Children.Add(slider);
+            cardGrid.Children.Add(textBox);
 
             Slider localSlider = slider;
             CheckBox localCheck = checkBox;
@@ -486,47 +534,131 @@ namespace OpenDimmer.UI
                 }
             };
 
-            card.Child = stack;
+            card.Child = cardGrid;
             return card;
         }
 
-        private void UpdateTintButtonVisual(Button btn, string hexTint)
+        private Border BuildTintView()
         {
-            string code = string.IsNullOrEmpty(hexTint) ? "000000" : hexTint.ToUpperInvariant();
-            int idx = Array.IndexOf(TintCodes, code);
-            string name = idx >= 0 ? TintNames[idx] : ("Custom #" + code);
+            var container = new Border
+            {
+                Background = new SolidColorBrush(MediaColor.FromRgb(38, 43, 50)),
+                BorderBrush = new SolidColorBrush(MediaColor.FromRgb(24, 28, 34)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(10, 8, 10, 8),
+                Visibility = Visibility.Collapsed
+            };
 
-            MediaColor displayColor = MediaColor.FromRgb(30, 30, 30);
-            if (code == "2B1300") displayColor = MediaColor.FromRgb(214, 122, 34);
-            else if (code == "330D00") displayColor = MediaColor.FromRgb(196, 68, 28);
-            else if (code == "1F190D") displayColor = MediaColor.FromRgb(168, 142, 82);
+            var scroll = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
 
-            btn.Background = new SolidColorBrush(displayColor);
-            btn.ToolTip = "Tint: " + name + " (click to cycle)";
+            var rootStack = new StackPanel { Orientation = Orientation.Vertical };
+
+            rootStack.Children.Add(new TextBlock
+            {
+                Text = "Color Filter & Blue Light Reduction (Tint)",
+                Foreground = new SolidColorBrush(Colors.White),
+                FontWeight = FontWeights.Bold,
+                FontSize = 12.5,
+                Margin = new Thickness(0, 0, 0, 4)
+            });
+
+            rootStack.Children.Add(new TextBlock
+            {
+                Text = "Choose the color of the dimming overlay for each monitor. 'Neutral Black' only lowers brightness, while Warm/Amber presets also reduce blue light at night.",
+                Foreground = new SolidColorBrush(MediaColor.FromRgb(185, 198, 212)),
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 11,
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+
+            _tintScreensHost = new StackPanel { Orientation = Orientation.Vertical };
+            rootStack.Children.Add(_tintScreensHost);
+
+            scroll.Content = rootStack;
+            container.Child = scroll;
+            return container;
         }
 
-        private void OnScreenTintCycled(int screenId)
+        private void RebuildTintControls()
         {
-            var strip = _screenStrips.FirstOrDefault(x => x.ScreenId == screenId);
-            var cfg = _settings.Screens.FirstOrDefault(x => x.Id == screenId);
-            if (strip == null || cfg == null || strip.TintButton == null) return;
+            if (_tintScreensHost == null) return;
+            _tintScreensHost.Children.Clear();
 
-            string current = string.IsNullOrEmpty(cfg.Tint) ? "000000" : cfg.Tint.ToUpperInvariant();
-            int idx = Array.IndexOf(TintCodes, current);
-            int nextIdx = (idx + 1) % TintCodes.Length;
+            int activeCount = Forms.Screen.AllScreens.Length;
+            for (int i = 0; i < activeCount; i++)
+            {
+                int screenId = i + 1;
+                var cfg = _settings.Screens.FirstOrDefault(x => x.Id == screenId);
+                if (cfg == null) continue;
 
-            cfg.Tint = TintCodes[nextIdx];
-            UpdateTintButtonVisual(strip.TintButton, cfg.Tint);
-            _overlayManager.RefreshOverlay(screenId);
-            _settingsService.Save(_settings);
+                var screenBox = new Border
+                {
+                    Background = new SolidColorBrush(MediaColor.FromRgb(30, 35, 42)),
+                    BorderBrush = new SolidColorBrush(MediaColor.FromRgb(52, 60, 72)),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(8, 6, 8, 6),
+                    Margin = new Thickness(0, 0, 0, 8)
+                };
+
+                var stack = new StackPanel { Orientation = Orientation.Vertical };
+
+                stack.Children.Add(new TextBlock
+                {
+                    Text = "Screen #" + screenId + " (" + cfg.DeviceName + ")",
+                    Foreground = new SolidColorBrush(Colors.White),
+                    FontWeight = FontWeights.SemiBold,
+                    FontSize = 11.5,
+                    Margin = new Thickness(0, 0, 0, 6)
+                });
+
+                var combo = new ComboBox
+                {
+                    Height = 24,
+                    FontSize = 11.5,
+                    Margin = new Thickness(0, 0, 0, 4)
+                };
+
+                for (int t = 0; t < TintNames.Length; t++)
+                {
+                    combo.Items.Add(TintNames[t] + " [#" + TintCodes[t] + "]");
+                }
+
+                string currentHex = string.IsNullOrEmpty(cfg.Tint) ? "000000" : cfg.Tint.ToUpperInvariant();
+                int idx = Array.IndexOf(TintCodes, currentHex);
+                combo.SelectedIndex = idx >= 0 ? idx : 0;
+
+                int capturedId = screenId;
+                combo.SelectionChanged += (s, e) =>
+                {
+                    if (combo.SelectedIndex >= 0 && combo.SelectedIndex < TintCodes.Length)
+                    {
+                        var targetCfg = _settings.Screens.FirstOrDefault(x => x.Id == capturedId);
+                        if (targetCfg != null)
+                        {
+                            targetCfg.Tint = TintCodes[combo.SelectedIndex];
+                            _overlayManager.RefreshOverlay(capturedId);
+                            _settingsService.Save(_settings);
+                        }
+                    }
+                };
+
+                stack.Children.Add(combo);
+                screenBox.Child = stack;
+                _tintScreensHost.Children.Add(screenBox);
+            }
         }
 
         private Border BuildOptionsView()
         {
             var container = new Border
             {
-                Background = new SolidColorBrush(MediaColor.FromRgb(35, 43, 53)),
-                BorderBrush = new SolidColorBrush(MediaColor.FromRgb(22, 27, 34)),
+                Background = new SolidColorBrush(MediaColor.FromRgb(38, 43, 50)),
+                BorderBrush = new SolidColorBrush(MediaColor.FromRgb(24, 28, 34)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(10, 8, 10, 8),
@@ -551,12 +683,12 @@ namespace OpenDimmer.UI
                 val => { _settings.ShowBoundaries = val; _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
 
             stack.Children.Add(CreateOptionCheckBox(
-                "Proportional Master slider",
+                "Proportional Master slider (keep screen difference)",
                 _settings.Master.Proportional,
                 val => { _settings.Master.Proportional = val; _settingsService.Save(_settings); }));
 
             stack.Children.Add(CreateOptionCheckBox(
-                "Dim Start Menu & Cursor (Gamma)",
+                "Dim Start Menu & Cursor (Hardware Gamma)",
                 _settings.UseHardwareGamma,
                 val => { _settings.UseHardwareGamma = val; _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
 
@@ -591,13 +723,13 @@ namespace OpenDimmer.UI
                 val => { _settings.StartMinimised = val; _settingsService.Save(_settings); }));
 
             stack.Children.Add(CreateOptionCheckBox(
-                "Start with Windows",
+                "Auto run (after user login)",
                 _settings.AutoRun,
                 val => { _settings.AutoRun = val; AutoRunService.SetAutoRun(val); _settingsService.Save(_settings); }));
 
             var btnResetPos = new Button
             {
-                Content = "Reset Window Position",
+                Content = "Reset Window Size & Position",
                 Height = 24,
                 Margin = new Thickness(0, 6, 0, 2),
                 Background = new SolidColorBrush(MediaColor.FromRgb(50, 60, 74)),
@@ -631,8 +763,8 @@ namespace OpenDimmer.UI
         {
             var container = new Border
             {
-                Background = new SolidColorBrush(MediaColor.FromRgb(35, 43, 53)),
-                BorderBrush = new SolidColorBrush(MediaColor.FromRgb(22, 27, 34)),
+                Background = new SolidColorBrush(MediaColor.FromRgb(38, 43, 50)),
+                BorderBrush = new SolidColorBrush(MediaColor.FromRgb(24, 28, 34)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(12, 10, 12, 10),
@@ -682,8 +814,8 @@ namespace OpenDimmer.UI
         {
             var container = new Border
             {
-                Background = new SolidColorBrush(MediaColor.FromRgb(35, 43, 53)),
-                BorderBrush = new SolidColorBrush(MediaColor.FromRgb(22, 27, 34)),
+                Background = new SolidColorBrush(MediaColor.FromRgb(38, 43, 50)),
+                BorderBrush = new SolidColorBrush(MediaColor.FromRgb(24, 28, 34)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(8, 6, 8, 6),
@@ -780,9 +912,12 @@ namespace OpenDimmer.UI
         {
             if (_suppressEvents) return;
             bool on = _chkMaster.IsChecked == true;
+            int masterDim = (int)Math.Round(_sldMaster.Value);
+
             _settings.Master.On = on;
+            _settings.Master.Dim = masterDim;
             _sldMaster.IsEnabled = on;
-            _sldMaster.Opacity = on ? 1.0 : 0.4;
+            _sldMaster.Opacity = on ? 1.0 : 0.45;
             _txtMaster.IsEnabled = on;
 
             _suppressEvents = true;
@@ -790,11 +925,22 @@ namespace OpenDimmer.UI
             {
                 strip.CheckBox.IsChecked = on;
                 strip.Slider.IsEnabled = on;
-                strip.Slider.Opacity = on ? 1.0 : 0.4;
+                strip.Slider.Opacity = on ? 1.0 : 0.45;
                 strip.TextBox.IsEnabled = on;
 
                 var cfg = _settings.Screens.FirstOrDefault(x => x.Id == strip.ScreenId);
-                if (cfg != null) cfg.On = on;
+                if (cfg != null)
+                {
+                    cfg.On = on;
+                    // Match original Dimmer: activating Master moves all screens to Master's value
+                    // (unless the user explicitly enabled Proportional mode in Options)
+                    if (on && !_settings.Master.Proportional)
+                    {
+                        cfg.Dim = masterDim;
+                        strip.Slider.Value = masterDim;
+                        strip.TextBox.Text = masterDim.ToString();
+                    }
+                }
             }
             _suppressEvents = false;
 
@@ -839,16 +985,15 @@ namespace OpenDimmer.UI
             bool on = strip.CheckBox.IsChecked == true;
             cfg.On = on;
             strip.Slider.IsEnabled = on;
-            strip.Slider.Opacity = on ? 1.0 : 0.4;
+            strip.Slider.Opacity = on ? 1.0 : 0.45;
             strip.TextBox.IsEnabled = on;
 
-            // Sync Master checkbox state with individual screens (same as original Dimmer)
             _suppressEvents = true;
             bool anyOn = _screenStrips.Any(x => x.CheckBox.IsChecked == true);
             _chkMaster.IsChecked = anyOn;
             _settings.Master.On = anyOn;
             _sldMaster.IsEnabled = anyOn;
-            _sldMaster.Opacity = anyOn ? 1.0 : 0.4;
+            _sldMaster.Opacity = anyOn ? 1.0 : 0.45;
             _txtMaster.IsEnabled = anyOn;
             _suppressEvents = false;
 
@@ -945,13 +1090,25 @@ namespace OpenDimmer.UI
         public void ShowAndActivateWindow()
         {
             Show();
-            WindowState = WindowState.Normal;
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
             Activate();
             _overlayManager.EnforceAllTopmost();
         }
 
         private void RestoreOrResetPosition()
         {
+            if (_settings.Position.Width.HasValue && _settings.Position.Width.Value >= MinWidth)
+            {
+                Width = _settings.Position.Width.Value;
+            }
+            if (_settings.Position.Height.HasValue && _settings.Position.Height.Value >= MinHeight)
+            {
+                Height = _settings.Position.Height.Value;
+            }
+
             if (_settings.Position.Left.HasValue && _settings.Position.Top.HasValue)
             {
                 Left = _settings.Position.Left.Value;
@@ -965,6 +1122,9 @@ namespace OpenDimmer.UI
 
         private void ResetPositionToCorner()
         {
+            WindowState = WindowState.Normal;
+            Width = 340;
+            Height = 350;
             var workArea = SystemParameters.WorkArea;
             Left = workArea.Right - Width - 16;
             Top = workArea.Bottom - Height - 16;
@@ -1000,8 +1160,13 @@ namespace OpenDimmer.UI
 
         private void SaveWindowPosition()
         {
-            _settings.Position.Left = Left;
-            _settings.Position.Top = Top;
+            if (WindowState == WindowState.Normal)
+            {
+                _settings.Position.Left = Left;
+                _settings.Position.Top = Top;
+                _settings.Position.Width = Width;
+                _settings.Position.Height = Height;
+            }
             _settingsService.Save(_settings);
         }
 

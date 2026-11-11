@@ -7,6 +7,8 @@ namespace OpenDimmer.Models
     {
         public double? Left { get; set; }
         public double? Top { get; set; }
+        public double? Width { get; set; }
+        public double? Height { get; set; }
     }
 
     public sealed class MasterSettings
@@ -18,7 +20,7 @@ namespace OpenDimmer.Models
         public MasterSettings()
         {
             Dim = 30;
-            Proportional = true;
+            Proportional = false;
         }
     }
 
