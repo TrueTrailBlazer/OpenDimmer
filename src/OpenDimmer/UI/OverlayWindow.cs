@@ -88,7 +88,7 @@ namespace OpenDimmer.UI
             NativeMethods.SetProp(_hwnd, "NonRudeHWND", _hwnd);
         }
 
-        public void ApplyDimming(bool enabled, int dimPercent, string hexTint)
+        public void ApplyDimming(bool enabled, int dimPercent, string hexTint, int tintIntensity = 60)
         {
             if (!enabled)
             {
@@ -96,19 +96,30 @@ namespace OpenDimmer.UI
                 return;
             }
 
-            if (!string.IsNullOrEmpty(hexTint) && hexTint.Length == 6)
+            double clampedIntensity = Math.Max(10, Math.Min(100, tintIntensity)) / 100.0;
+            if (!string.IsNullOrEmpty(hexTint) && hexTint.Length == 6 && hexTint != "000000")
             {
                 try
                 {
-                    byte r = Convert.ToByte(hexTint.Substring(0, 2), 16);
-                    byte g = Convert.ToByte(hexTint.Substring(2, 2), 16);
-                    byte b = Convert.ToByte(hexTint.Substring(4, 2), 16);
+                    byte baseR = Convert.ToByte(hexTint.Substring(0, 2), 16);
+                    byte baseG = Convert.ToByte(hexTint.Substring(2, 2), 16);
+                    byte baseB = Convert.ToByte(hexTint.Substring(4, 2), 16);
+
+                    // Scale warm tint saturation by user's TintIntensity slider (10%..100%)
+                    double scale = clampedIntensity * 1.4;
+                    byte r = (byte)Math.Max(0, Math.Min(255, (int)(baseR * scale)));
+                    byte g = (byte)Math.Max(0, Math.Min(255, (int)(baseG * scale)));
+                    byte b = (byte)Math.Max(0, Math.Min(255, (int)(baseB * scale)));
                     _dimBrush.Color = MediaColor.FromRgb(r, g, b);
                 }
                 catch
                 {
                     _dimBrush.Color = Colors.Black;
                 }
+            }
+            else
+            {
+                _dimBrush.Color = Colors.Black;
             }
 
             double clamped = Math.Max(0, Math.Min(95, dimPercent));
