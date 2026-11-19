@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using OpenDimmer.Models;
 using OpenDimmer.Services;
 using Xunit;
@@ -141,13 +142,107 @@ namespace OpenDimmer.Core.Tests
         public void CountActiveBehaviorSettings_CountsCorrectly()
         {
             var settings = new AppSettings();
-            // Defaults: CloseHidesToTray=true, ShowInTaskbar=true (+ Windows-only defaults: AvoidTaskbarAutoHideLock, NonDimmableWindow, MovableWindow)
+            // Defaults: CloseHidesToTray=true, ShowInTaskbar=true (+ Windows defaults: ExcludeFromCapture, AvoidTaskbarAutoHideLock, NonDimmableWindow, MovableWindow)
             Assert.Equal(2, DimmingMath.CountActiveBehaviorSettings(settings, includeWindowsOnly: false));
-            Assert.Equal(5, DimmingMath.CountActiveBehaviorSettings(settings, includeWindowsOnly: true));
+            Assert.Equal(6, DimmingMath.CountActiveBehaviorSettings(settings, includeWindowsOnly: true));
 
             settings.AutoRun = true;
             settings.Master.Proportional = true;
             Assert.Equal(4, DimmingMath.CountActiveBehaviorSettings(settings, includeWindowsOnly: false));
+            Assert.Equal(8, DimmingMath.CountActiveBehaviorSettings(settings, includeWindowsOnly: true));
+        }
+
+        [Fact]
+        public void ToWin32ColorRef_EncodesBbGgRrByteOrder()
+        {
+            Assert.Equal((uint)0x0000132B, DimmingMath.ToWin32ColorRef(0x2B, 0x13, 0x00));
+            Assert.Equal((uint)0x00332211, DimmingMath.ToWin32ColorRef(0x11, 0x22, 0x33));
+            Assert.Equal((uint)0x00000000, DimmingMath.ToWin32ColorRef(0x00, 0x00, 0x00));
+        }
+
+        [Fact]
+        public void ComputeOverlayColorAndAlpha_HandlesDisabledNeutralAndWarmTint()
+        {
+            DimmingMath.ComputeOverlayColorAndAlpha(
+                enabled: false, dimPercent: 60, hexTint: "2B1300", tintIntensity: 60, maxCap: 90,
+                out byte dr, out byte dg, out byte db, out byte da);
+            Assert.Equal(0, da);
+            Assert.Equal(0, dr);
+
+            DimmingMath.ComputeOverlayColorAndAlpha(
+                enabled: true, dimPercent: 50, hexTint: "000000", tintIntensity: 60, maxCap: 90,
+                out byte nr, out byte ng, out byte nb, out byte na);
+            Assert.Equal(0, nr);
+            Assert.Equal(0, ng);
+            Assert.Equal(0, nb);
+            Assert.Equal(128, na);
+
+            DimmingMath.ComputeOverlayColorAndAlpha(
+                enabled: true, dimPercent: 100, hexTint: "2B1300", tintIntensity: 80, maxCap: 90,
+                out byte wr, out byte wg, out byte wb, out byte wa);
+            Assert.Equal((byte)Math.Round(0.90 * 255), wa);
+            Assert.True(wr > wg && wg > wb);
+        }
+
+        [Fact]
+        public void IsWindowVisibleOnMonitors_DetectsOffScreenAndPartialOverlap()
+        {
+            var monitors = new List<MonitorDescriptor>
+            {
+                new MonitorDescriptor { X = 0, Y = 0, Width = 1920, Height = 1080 },
+                new MonitorDescriptor { X = 1920, Y = 0, Width = 2560, Height = 1080 }
+            };
+
+            Assert.True(DimmingMath.IsWindowVisibleOnMonitors(100, 100, 386, 468, monitors));
+            Assert.True(DimmingMath.IsWindowVisibleOnMonitors(2200, 300, 386, 468, monitors));
+            // Partially hanging off edge with >= 40px visible remains visible
+            Assert.True(DimmingMath.IsWindowVisibleOnMonitors(-300, 100, 386, 468, monitors));
+
+            // Simulate unplugging secondary monitor (2560x1080 at X=1920): saved window is now off-screen
+            var singleMonitor = new List<MonitorDescriptor> { monitors[0] };
+            Assert.False(DimmingMath.IsWindowVisibleOnMonitors(2200, 300, 386, 468, singleMonitor));
+            // Only 10px visible (< 40px threshold) should reset
+            Assert.False(DimmingMath.IsWindowVisibleOnMonitors(1910, 300, 386, 468, singleMonitor));
+        }
+
+        [Fact]
+        public void GetNextMaxDimCap_CyclesAcrossSafetyLimits()
+        {
+            Assert.Equal(80, DimmingMath.GetNextMaxDimCap(95));
+            Assert.Equal(85, DimmingMath.GetNextMaxDimCap(80));
+            Assert.Equal(90, DimmingMath.GetNextMaxDimCap(85));
+            Assert.Equal(95, DimmingMath.GetNextMaxDimCap(90));
+            Assert.Equal(90, DimmingMath.GetNextMaxDimCap(77));
+        }
+
+        [Fact]
+        public void ApplyGammaTransform_PreservesNonLinearIccCurveOnRestore()
+        {
+            var iccR = new ushort[256];
+            var iccG = new ushort[256];
+            var iccB = new ushort[256];
+            for (int i = 0; i < 256; i++)
+            {
+                double norm = i / 255.0;
+                iccR[i] = (ushort)Math.Round(Math.Pow(norm, 1.15) * 65535.0);
+                iccG[i] = (ushort)Math.Round(Math.Pow(norm, 1.05) * 65535.0);
+                iccB[i] = (ushort)Math.Round(Math.Pow(norm, 0.95) * 65535.0);
+            }
+
+            DimmingMath.ApplyGammaTransform(
+                iccR, iccG, iccB,
+                enabled: true, dimPercent: 30, hexTint: "000000", tintIntensity: 60, maxCap: 45,
+                out ushort[] dimR, out ushort[] dimG, out ushort[] dimB);
+            Assert.True(dimR[128] < iccR[128]);
+            Assert.InRange(dimR[128] / (double)iccR[128], 0.68, 0.72);
+
+            DimmingMath.ApplyGammaTransform(
+                iccR, iccG, iccB,
+                enabled: false, dimPercent: 30, hexTint: "000000", tintIntensity: 60, maxCap: 45,
+                out ushort[] restR, out ushort[] restG, out ushort[] restB);
+            Assert.Equal(iccR, restR);
+            Assert.Equal(iccG, restG);
+            Assert.Equal(iccB, restB);
         }
     }
 }

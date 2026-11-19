@@ -745,12 +745,13 @@ namespace OpenDimmer.UI
             int dimValue,
             string tintHex)
         {
+            int maxCap = GetEffectiveMaxCap();
             var visual = new ChannelStripVisual
             {
                 IsMaster = isMaster,
                 ScreenId = screenId,
                 IsOn = isOn,
-                Value = Math.Max(0, Math.Min(90, dimValue))
+                Value = DimmingMath.ClampDimPercent(dimValue, maxCap)
             };
 
             var card = new Border
@@ -1093,7 +1094,7 @@ namespace OpenDimmer.UI
                 {
                     visual.IsOn = true;
                 }
-                SetChannelValue(visual, Math.Max(0, Math.Min(90, visual.Value + delta)), true);
+                SetChannelValue(visual, DimmingMath.ClampDimPercent(visual.Value + delta, GetEffectiveMaxCap()), true);
                 e.Handled = true;
             };
 
@@ -1103,17 +1104,23 @@ namespace OpenDimmer.UI
             return visual;
         }
 
+        private int GetEffectiveMaxCap()
+        {
+            return _settings.MaxDimPercent > 0 ? _settings.MaxDimPercent : 90;
+        }
+
         private void BindCustomSliderEvents(ChannelStripVisual visual)
         {
             bool isDragging = false;
 
             Func<MouseEventArgs, int> calcPercent = e =>
             {
+                int maxCap = GetEffectiveMaxCap();
                 double h = Math.Max(1.0, visual.SliderHitArea.ActualHeight - 16.0);
                 var pos = e.GetPosition(visual.SliderHitArea);
                 double relFromBottom = (visual.SliderHitArea.ActualHeight - 8.0) - pos.Y;
                 double ratio = Math.Max(0.0, Math.Min(1.0, relFromBottom / h));
-                return (int)Math.Round(ratio * 90.0);
+                return (int)Math.Round(ratio * (double)maxCap);
             };
 
             visual.SliderHitArea.MouseLeftButtonDown += (s, e) =>
@@ -1156,7 +1163,7 @@ namespace OpenDimmer.UI
                 int parsed;
                 if (int.TryParse(raw, out parsed))
                 {
-                    int clamped = Math.Max(0, Math.Min(90, parsed));
+                    int clamped = DimmingMath.ClampDimPercent(parsed, GetEffectiveMaxCap());
                     if (!visual.IsOn && clamped > 0)
                     {
                         visual.IsOn = true;
@@ -1185,8 +1192,9 @@ namespace OpenDimmer.UI
         private void UpdateSliderGeometry(ChannelStripVisual visual)
         {
             if (visual.SliderHitArea == null) return;
+            double maxCap = (double)GetEffectiveMaxCap();
             double usableHeight = Math.Max(0.0, visual.SliderHitArea.ActualHeight - 16.0);
-            double ratio = Math.Max(0.0, Math.Min(1.0, visual.Value / 90.0));
+            double ratio = Math.Max(0.0, Math.Min(1.0, visual.Value / maxCap));
             double fillPx = usableHeight * ratio;
 
             visual.TrackFill.Height = fillPx;
@@ -1278,19 +1286,20 @@ namespace OpenDimmer.UI
                 _overlayManager.RefreshOverlay(visual.ScreenId);
             }
 
+            UpdatePresetButtonsHighlight();
             _settingsService.Save(_settings);
         }
 
         private void SetChannelValue(ChannelStripVisual visual, int newVal, bool fromUser)
         {
-            int clamped = Math.Max(0, Math.Min(90, newVal));
-            int delta = clamped - visual.Value;
+            int maxCap = GetEffectiveMaxCap();
+            int clamped = DimmingMath.ClampDimPercent(newVal, maxCap);
+            int previousVal = visual.Value;
             visual.Value = clamped;
 
             if (visual.IsMaster)
             {
-                _settings.Master.On = visual.IsOn;
-                _settings.Master.Dim = clamped;
+                DimmingMath.ApplyMasterChange(_settings, visual.IsOn, clamped, previousVal);
                 UpdateChannelVisualState(visual, "000000");
 
                 foreach (var m in _monitorStrips)
@@ -1299,13 +1308,7 @@ namespace OpenDimmer.UI
                     var cfg = _settings.Screens.FirstOrDefault(x => x.Id == m.ScreenId);
                     if (cfg == null) continue;
 
-                    cfg.On = visual.IsOn;
-                    int targetVal = _settings.Master.Proportional
-                        ? Math.Max(0, Math.Min(90, cfg.Dim + delta))
-                        : clamped;
-
-                    cfg.Dim = targetVal;
-                    m.Value = targetVal;
+                    m.Value = cfg.Dim;
                     UpdateChannelVisualState(m, cfg.Tint);
                 }
                 _overlayManager.RefreshAllOverlays();
@@ -1330,6 +1333,7 @@ namespace OpenDimmer.UI
                 _overlayManager.RefreshOverlay(visual.ScreenId);
             }
 
+            UpdatePresetButtonsHighlight();
             _settingsService.Save(_settings);
         }
 
@@ -1379,11 +1383,36 @@ namespace OpenDimmer.UI
 
         private void ApplyQuickPreset(int presetDim)
         {
-            bool turnOn = presetDim > 0;
-            _masterStrip.IsOn = turnOn;
-            SetChannelValue(_masterStrip, presetDim, true);
+            DimmingMath.ApplyQuickPreset(_settings, presetDim);
 
-            string targetLabel = presetDim == 0 ? "Off" : (presetDim + "%");
+            if (_masterStrip != null)
+            {
+                _masterStrip.IsOn = _settings.Master.On;
+                _masterStrip.Value = _settings.Master.Dim;
+                UpdateChannelVisualState(_masterStrip, "000000");
+            }
+
+            foreach (var m in _monitorStrips)
+            {
+                var cfg = _settings.Screens.FirstOrDefault(x => x.Id == m.ScreenId);
+                if (cfg == null) continue;
+
+                m.IsOn = cfg.On;
+                m.Value = cfg.Dim;
+                UpdateChannelVisualState(m, cfg.Tint);
+            }
+
+            _overlayManager.RefreshAllOverlays();
+            UpdatePresetButtonsHighlight();
+            _settingsService.Save(_settings);
+        }
+
+        private void UpdatePresetButtonsHighlight()
+        {
+            string targetLabel = (!_settings.Master.On || _settings.Master.Dim == 0)
+                ? "Off"
+                : (_settings.Master.Dim + "%");
+
             foreach (var btn in _presetButtons)
             {
                 bool match = (btn.Content as string) == targetLabel;
@@ -1490,7 +1519,7 @@ namespace OpenDimmer.UI
 
             _configuredCountText = new TextBlock
             {
-                Text = "11 CONFIGURED",
+                Text = "0 ACTIVE",
                 FontSize = 9.5,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = new SolidColorBrush(ColTextSecondary),
@@ -1514,6 +1543,20 @@ namespace OpenDimmer.UI
                 _settings.ShowBoundaries,
                 true,
                 val => { _settings.ShowBoundaries = val; UpdateConfiguredCounter(); _overlayManager.RefreshAllOverlays(); _settingsService.Save(_settings); }));
+
+            behaviorStack.Children.Add(CreateSwitchRow(
+                "Hide filter from screenshots",
+                "Excludes dimming overlay from PrintScreen, Lightshot, and OBS",
+                _settings.ExcludeFromCapture,
+                true,
+                val =>
+                {
+                    _settings.ExcludeFromCapture = val;
+                    UpdateFooterStatus();
+                    UpdateConfiguredCounter();
+                    _overlayManager.RefreshAllOverlays();
+                    _settingsService.Save(_settings);
+                }));
 
             behaviorStack.Children.Add(CreateSwitchRow(
                 "Proportional Master mode",
@@ -1582,17 +1625,23 @@ namespace OpenDimmer.UI
                 "Launch at Windows startup",
                 "Automatically starts OpenDimmer after user login",
                 _settings.AutoRun,
-                false,
+                true,
                 val => { _settings.AutoRun = val; AutoRunService.SetAutoRun(val); UpdateConfiguredCounter(); _settingsService.Save(_settings); }));
+
+            behaviorStack.Children.Add(CreateSafetyLimitRow());
 
             var actionGrid = new UniformGrid
             {
-                Columns = 2,
+                Columns = 3,
                 Margin = new Thickness(0, 10, 0, 2)
             };
 
+            var btnReload = CreateActionButton("Reload Displays", "Re-scan monitors and realign overlays");
+            btnReload.Margin = new Thickness(0, 0, 4, 0);
+            btnReload.Click += (s, e) => _overlayManager.ReloadDisplays();
+
             var btnReset = CreateActionButton("Reset Window", "Restore default size and bottom-right position");
-            btnReset.Margin = new Thickness(0, 0, 4, 0);
+            btnReset.Margin = new Thickness(2, 0, 2, 0);
             btnReset.Click += (s, e) => ResetPositionToCorner();
 
             var btnDiag = CreateActionButton("Copy Diagnostics", "Copy system, monitor, and JSON config to clipboard");
@@ -1603,6 +1652,7 @@ namespace OpenDimmer.UI
                 btnDiag.Content = "Copied!";
             };
 
+            actionGrid.Children.Add(btnReload);
             actionGrid.Children.Add(btnReset);
             actionGrid.Children.Add(btnDiag);
             behaviorStack.Children.Add(actionGrid);
@@ -1610,14 +1660,79 @@ namespace OpenDimmer.UI
             behaviorCard.Child = behaviorStack;
             rootStack.Children.Add(behaviorCard);
 
+            UpdateConfiguredCounter();
             scroll.Content = rootStack;
             return scroll;
+        }
+
+        private StackPanel CreateSafetyLimitRow()
+        {
+            var wrapper = new StackPanel { Orientation = Orientation.Vertical };
+
+            var row = new Grid
+            {
+                Margin = new Thickness(0, 6, 0, 6),
+                Background = System.Windows.Media.Brushes.Transparent
+            };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var textStack = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 10, 0)
+            };
+            textStack.Children.Add(new TextBlock
+            {
+                Text = "Max dim safety limit",
+                FontSize = 11.5,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(ColTextPrimary),
+                TextWrapping = TextWrapping.Wrap
+            });
+            textStack.Children.Add(new TextBlock
+            {
+                Text = "Prevents accidental pitch-black screen lockout",
+                FontSize = 10,
+                Foreground = new SolidColorBrush(ColTextSecondary),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 1, 0, 0)
+            });
+
+            var limitBtn = CreateActionButton(GetEffectiveMaxCap() + "%", "Click to cycle safety cap (80% / 85% / 90% / 95%)");
+            limitBtn.Width = 54;
+            limitBtn.Height = 24;
+            limitBtn.Click += (s, e) =>
+            {
+                int nextCap = DimmingMath.GetNextMaxDimCap(GetEffectiveMaxCap());
+                _settings.MaxDimPercent = nextCap;
+                limitBtn.Content = nextCap + "%";
+
+                _settings.Master.Dim = DimmingMath.ClampDimPercent(_settings.Master.Dim, nextCap);
+                for (int i = 0; i < _settings.Screens.Count; i++)
+                {
+                    _settings.Screens[i].Dim = DimmingMath.ClampDimPercent(_settings.Screens[i].Dim, nextCap);
+                }
+
+                RebuildChannelStrips();
+                _overlayManager.RefreshAllOverlays();
+                _settingsService.Save(_settings);
+            };
+
+            Grid.SetColumn(textStack, 0);
+            Grid.SetColumn(limitBtn, 1);
+            row.Children.Add(textStack);
+            row.Children.Add(limitBtn);
+            wrapper.Children.Add(row);
+
+            return wrapper;
         }
 
         private void UpdateConfiguredCounter()
         {
             if (_configuredCountText == null) return;
-            _configuredCountText.Text = "11 CONFIGURED";
+            _configuredCountText.Text = DimmingMath.CountActiveBehaviorSettings(_settings, true) + " ACTIVE";
         }
 
         private void RebuildTintSettingsRows()
@@ -2249,7 +2364,7 @@ namespace OpenDimmer.UI
 
             var versionText = new TextBlock
             {
-                Text = "v1.0.0",
+                Text = "v1.1.0",
                 FontSize = 9.5,
                 Foreground = new SolidColorBrush(ColTextSecondary),
                 HorizontalAlignment = HorizontalAlignment.Right,
@@ -2264,9 +2379,18 @@ namespace OpenDimmer.UI
         private void UpdateFooterStatus()
         {
             if (_footerStatusText == null) return;
-            _footerStatusText.Text = _settings.UseHardwareGamma
-                ? "HYBRID GAMMA + OVERLAY ACTIVE"
-                : "OVERLAY PROTECTION ACTIVE";
+            if (_settings.UseHardwareGamma)
+            {
+                _footerStatusText.Text = _settings.ExcludeFromCapture
+                    ? "HYBRID GAMMA + SCREENSHOT-SAFE OVERLAY"
+                    : "HYBRID GAMMA + WIN32 OVERLAY ACTIVE";
+            }
+            else
+            {
+                _footerStatusText.Text = _settings.ExcludeFromCapture
+                    ? "WIN32 OVERLAY \u2022 SCREENSHOT-SAFE"
+                    : "WIN32 OVERLAY PROTECTION ACTIVE";
+            }
         }
 
         private void SwitchView(string view)
@@ -2297,6 +2421,9 @@ namespace OpenDimmer.UI
                 sb.AppendLine(string.Format("OS: [{0}]", Environment.OSVersion));
                 sb.AppendLine(string.Format("64-bit: [OS: {0}] [Process: {1}]",
                     Environment.Is64BitOperatingSystem, Environment.Is64BitProcess));
+                sb.AppendLine("Config Path: " + _settingsService.FilePath);
+                sb.AppendLine(string.Format("Flags: [ExcludeFromCapture: {0}] [MaxDimPercent: {1}] [HybridGamma: {2}]",
+                    _settings.ExcludeFromCapture, GetEffectiveMaxCap(), _settings.UseHardwareGamma));
                 sb.AppendLine();
 
                 var screens = Forms.Screen.AllScreens;
@@ -2379,6 +2506,8 @@ namespace OpenDimmer.UI
                 }
             });
             menu.Items.Add("Night Sync (4500K)", null, (s, e) => OnNightSyncClicked());
+            menu.Items.Add("Disable Dimming (Safe Off)", null, (s, e) => ApplyQuickPreset(0));
+            menu.Items.Add("Reload Displays", null, (s, e) => _overlayManager.ReloadDisplays());
             menu.Items.Add("Reset window position", null, (s, e) => ResetPositionToCorner());
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add("Close", null, (s, e) => Application.Current.Shutdown());
@@ -2432,13 +2561,29 @@ namespace OpenDimmer.UI
 
             if (_settings.Position.Left.HasValue && _settings.Position.Top.HasValue)
             {
-                Left = _settings.Position.Left.Value;
-                Top = _settings.Position.Top.Value;
+                double savedLeft = _settings.Position.Left.Value;
+                double savedTop = _settings.Position.Top.Value;
+
+                var virtualMonitors = new List<MonitorDescriptor>
+                {
+                    new MonitorDescriptor
+                    {
+                        X = (int)Math.Floor(SystemParameters.VirtualScreenLeft),
+                        Y = (int)Math.Floor(SystemParameters.VirtualScreenTop),
+                        Width = (int)Math.Ceiling(SystemParameters.VirtualScreenWidth),
+                        Height = (int)Math.Ceiling(SystemParameters.VirtualScreenHeight)
+                    }
+                };
+
+                if (DimmingMath.IsWindowVisibleOnMonitors(savedLeft, savedTop, Width, Height, virtualMonitors))
+                {
+                    Left = savedLeft;
+                    Top = savedTop;
+                    return;
+                }
             }
-            else
-            {
-                ResetPositionToCorner();
-            }
+
+            ResetPositionToCorner();
         }
 
         private void ResetPositionToCorner()

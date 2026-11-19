@@ -16,11 +16,14 @@ namespace OpenDimmer.Services
         private readonly List<OverlayWindow> _overlays = new List<OverlayWindow>();
         private readonly AppSettings _settings;
         private readonly SettingsService _settingsService;
+        private readonly Dispatcher _dispatcher;
         private readonly DispatcherTimer _topmostWatchdog;
+        private readonly DispatcherTimer _resumeReapplyTimer;
         private NativeMethods.WinEventDelegate _winEventDelegate;
         private IntPtr _foregroundHook;
         private IntPtr _objectShowHook;
         private IntPtr _controlPanelHwnd;
+        private bool _disposed;
 
         public IReadOnlyList<OverlayWindow> Overlays { get { return _overlays; } }
         public event EventHandler DisplaysReconfigured;
@@ -29,6 +32,7 @@ namespace OpenDimmer.Services
         {
             _settings = settings;
             _settingsService = settingsService;
+            _dispatcher = Dispatcher.CurrentDispatcher;
 
             BuildOverlaysForCurrentScreens();
             InstallWinEventHooks();
@@ -37,16 +41,40 @@ namespace OpenDimmer.Services
             {
                 Interval = TimeSpan.FromMilliseconds(750)
             };
-            _topmostWatchdog.Tick += (s, e) => EnforceAllTopmost();
+            _topmostWatchdog.Tick += (s, e) =>
+            {
+                if (_disposed) return;
+                EnforceAllTopmost();
+            };
             _topmostWatchdog.Start();
+
+            _resumeReapplyTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(1500)
+            };
+            _resumeReapplyTimer.Tick += (s, e) =>
+            {
+                _resumeReapplyTimer.Stop();
+                if (_disposed) return;
+                ReloadDisplays();
+            };
 
             SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
             SystemEvents.PowerModeChanged += OnPowerModeChanged;
+            SystemEvents.SessionEnding += OnSessionEnding;
         }
 
         public void SetControlPanelHandle(IntPtr hwnd)
         {
             _controlPanelHwnd = hwnd;
+        }
+
+        public void ReloadDisplays()
+        {
+            BuildOverlaysForCurrentScreens();
+            _settingsService.Save(_settings);
+            var handler = DisplaysReconfigured;
+            if (handler != null) handler(this, EventArgs.Empty);
         }
 
         public void BuildOverlaysForCurrentScreens()
@@ -69,7 +97,7 @@ namespace OpenDimmer.Services
                     ?? _settings.Screens.First(s => s.Id == id);
 
                 Rectangle targetBounds = AdjustBoundsForAutoHideTaskbar(screen.Bounds);
-                var overlay = new OverlayWindow(id, screen.DeviceName, targetBounds);
+                var overlay = new OverlayWindow(id, screen.DeviceName, targetBounds, _settings.ExcludeFromCapture);
                 overlay.Show();
                 overlay.UpdateBounds(targetBounds);
                 ApplyScreenDimming(overlay, cfg);
@@ -80,24 +108,27 @@ namespace OpenDimmer.Services
 
         private void ApplyScreenDimming(OverlayWindow overlay, ScreenSettings cfg)
         {
-            int intensity = cfg.TintIntensity > 0 ? cfg.TintIntensity : 60;
-            if (_settings.UseHardwareGamma && cfg.On && cfg.Dim > 0)
+            int maxCap = _settings.MaxDimPercent > 0 ? _settings.MaxDimPercent : 90;
+            int clampedDim = DimmingMath.ClampDimPercent(cfg.Dim, maxCap);
+            int intensity = DimmingMath.ClampTintIntensity(cfg.TintIntensity);
+
+            if (_settings.UseHardwareGamma && cfg.On && clampedDim > 0)
             {
-                int hwDim = Math.Min(GammaService.MaxHardwareDimPercent, cfg.Dim);
-                bool hwApplied = GammaService.ApplyMonitorGamma(overlay.DeviceName, true, hwDim, cfg.Tint);
+                int hwDim = Math.Min(GammaService.MaxHardwareDimPercent, clampedDim);
+                bool hwApplied = GammaService.ApplyMonitorGamma(overlay.DeviceName, true, hwDim, cfg.Tint, intensity);
                 if (hwApplied)
                 {
-                    int remainingOverlayDim = Math.Max(0, cfg.Dim - (int)(hwDim * 0.75));
-                    overlay.ApplyDimming(remainingOverlayDim > 0, remainingOverlayDim, cfg.Tint, intensity);
+                    int remainingOverlayDim = Math.Max(0, clampedDim - (int)(hwDim * 0.75));
+                    overlay.ApplyDimming(remainingOverlayDim > 0, remainingOverlayDim, cfg.Tint, intensity, maxCap);
                     return;
                 }
             }
             else
             {
-                GammaService.ApplyMonitorGamma(overlay.DeviceName, false, 0, "000000");
+                GammaService.ApplyMonitorGamma(overlay.DeviceName, false, 0, "000000", intensity);
             }
 
-            overlay.ApplyDimming(cfg.On, cfg.Dim, cfg.Tint, intensity);
+            overlay.ApplyDimming(cfg.On, clampedDim, cfg.Tint, intensity, maxCap);
         }
 
         private Rectangle AdjustBoundsForAutoHideTaskbar(Rectangle screenBounds)
@@ -150,9 +181,14 @@ namespace OpenDimmer.Services
 
         public void RefreshOverlay(int screenId)
         {
-            var cfg = _settings.Screens.FirstOrDefault(s => s.Id == screenId);
             var overlay = _overlays.FirstOrDefault(o => o.ScreenId == screenId);
-            if (cfg != null && overlay != null)
+            if (overlay == null) return;
+
+            var cfg = _settings.Screens.FirstOrDefault(s =>
+                string.Equals(s.DeviceName, overlay.DeviceName, StringComparison.OrdinalIgnoreCase))
+                ?? _settings.Screens.FirstOrDefault(s => s.Id == screenId);
+
+            if (cfg != null)
             {
                 ApplyScreenDimming(overlay, cfg);
                 PromoteControlPanelIfNeeded();
@@ -171,7 +207,11 @@ namespace OpenDimmer.Services
                     overlay.UpdateBounds(AdjustBoundsForAutoHideTaskbar(screen.Bounds));
                 }
 
-                var cfg = _settings.Screens.FirstOrDefault(s => s.Id == overlay.ScreenId);
+                overlay.SetExcludeFromCapture(_settings.ExcludeFromCapture);
+
+                var cfg = _settings.Screens.FirstOrDefault(s =>
+                    string.Equals(s.DeviceName, overlay.DeviceName, StringComparison.OrdinalIgnoreCase))
+                    ?? _settings.Screens.FirstOrDefault(s => s.Id == overlay.ScreenId);
                 if (cfg != null)
                 {
                     ApplyScreenDimming(overlay, cfg);
@@ -239,26 +279,43 @@ namespace OpenDimmer.Services
 
         private void OnDisplaySettingsChanged(object sender, EventArgs e)
         {
-            BuildOverlaysForCurrentScreens();
-            var handler = DisplaysReconfigured;
-            if (handler != null) handler(this, EventArgs.Empty);
+            if (_disposed) return;
+            _dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_disposed) return;
+                ReloadDisplays();
+            }));
         }
 
         private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
         {
-            if (e.Mode == PowerModes.Resume)
+            if (_disposed || e.Mode != PowerModes.Resume) return;
+
+            _dispatcher.BeginInvoke(new Action(() =>
             {
-                BuildOverlaysForCurrentScreens();
-                var handler = DisplaysReconfigured;
-                if (handler != null) handler(this, EventArgs.Empty);
-            }
+                if (_disposed) return;
+                ReloadDisplays();
+                _resumeReapplyTimer.Stop();
+                _resumeReapplyTimer.Start();
+            }));
+        }
+
+        private void OnSessionEnding(object sender, SessionEndingEventArgs e)
+        {
+            _settingsService.Save(_settings);
+            GammaService.RestoreAllMonitorsGamma();
         }
 
         public void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
+
             _topmostWatchdog.Stop();
+            _resumeReapplyTimer.Stop();
             SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+            SystemEvents.SessionEnding -= OnSessionEnding;
 
             if (_foregroundHook != IntPtr.Zero)
             {

@@ -1368,8 +1368,10 @@ namespace OpenDimmer.Linux.UI
                 "Launch at Linux startup",
                 "Creates XDG autostart desktop entry on login",
                 _settings.AutoRun,
-                false,
+                true,
                 val => { _settings.AutoRun = val; LinuxAutoRunService.SetAutoRun(val); UpdateConfiguredCounter(); _settingsStore.Save(_settings); }));
+
+            behaviorStack.Children.Add(CreateSafetyLimitRow());
 
             var actionGrid = new UniformGrid
             {
@@ -1791,6 +1793,62 @@ namespace OpenDimmer.Linux.UI
             return btn;
         }
 
+        private StackPanel CreateSafetyLimitRow()
+        {
+            var wrapper = new StackPanel { Orientation = Orientation.Vertical };
+            var row = new DockPanel { LastChildFill = false, Margin = new Thickness(0, 6, 0, 6) };
+
+            var textStack = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 240
+            };
+            textStack.Children.Add(new TextBlock
+            {
+                Text = "Max dim safety limit",
+                FontSize = 11.5,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = new SolidColorBrush(ColTextPrimary)
+            });
+            textStack.Children.Add(new TextBlock
+            {
+                Text = "Prevents accidental pitch-black screen lockout",
+                FontSize = 9.5,
+                Foreground = new SolidColorBrush(ColTextSecondary),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 1, 0, 0)
+            });
+            DockPanel.SetDock(textStack, Dock.Left);
+            row.Children.Add(textStack);
+
+            int currentCap = _settings.MaxDimPercent > 0 ? _settings.MaxDimPercent : 90;
+            Button limitBtn = CreateActionButton(currentCap + "%", "Click to cycle safety cap (80% / 85% / 90% / 95%)");
+            limitBtn.Width = 54;
+            limitBtn.Height = 24;
+            limitBtn.Click += (s, e) =>
+            {
+                int prevCap = _settings.MaxDimPercent > 0 ? _settings.MaxDimPercent : 90;
+                int nextCap = DimmingMath.GetNextMaxDimCap(prevCap);
+                _settings.MaxDimPercent = nextCap;
+                limitBtn.Content = nextCap + "%";
+
+                _settings.Master.Dim = DimmingMath.ClampDimPercent(_settings.Master.Dim, nextCap);
+                foreach (ScreenSettings scr in _settings.Screens)
+                {
+                    scr.Dim = DimmingMath.ClampDimPercent(scr.Dim, nextCap);
+                }
+
+                RebuildChannelStrips();
+                if (_applyGamma) _displayService.ApplyAll(_settings);
+                _settingsStore.Save(_settings);
+            };
+            DockPanel.SetDock(limitBtn, Dock.Right);
+            row.Children.Add(limitBtn);
+            wrapper.Children.Add(row);
+            return wrapper;
+        }
+
         private Grid BuildFooterBar()
         {
             var footer = new Grid { Background = new SolidColorBrush(ColCanvas) };
@@ -1819,7 +1877,7 @@ namespace OpenDimmer.Linux.UI
 
             var verText = new TextBlock
             {
-                Text = "v2.0-dev \u00B7 Linux X11",
+                Text = "v1.1.0 \u00B7 Linux X11",
                 FontSize = 9.5,
                 Foreground = new SolidColorBrush(ColTextMuted),
                 VerticalAlignment = VerticalAlignment.Center
@@ -1870,6 +1928,11 @@ namespace OpenDimmer.Linux.UI
             OnNightSyncClicked();
         }
 
+        public void SafeOffFromTray()
+        {
+            ApplyQuickPreset(0);
+        }
+
         public void ShowAndActivate()
         {
             Show();
@@ -1901,13 +1964,16 @@ namespace OpenDimmer.Linux.UI
             {
                 int savedX = (int)Math.Round(_settings.Position.Left.Value);
                 int savedY = (int)Math.Round(_settings.Position.Top.Value);
-                bool visibleOnAnyScreen = Screens.All.Any(s =>
-                    savedX < s.Bounds.Right - 40
-                    && savedX + Width > s.Bounds.X + 40
-                    && savedY < s.Bounds.Bottom - 40
-                    && savedY + Height > s.Bounds.Y + 40);
 
-                if (visibleOnAnyScreen)
+                var monitorRects = Screens.All.Select(s => new MonitorDescriptor
+                {
+                    X = s.Bounds.X,
+                    Y = s.Bounds.Y,
+                    Width = s.Bounds.Width,
+                    Height = s.Bounds.Height
+                }).ToList();
+
+                if (DimmingMath.IsWindowVisibleOnMonitors(savedX, savedY, Width, Height, monitorRects))
                 {
                     Position = new PixelPoint(savedX, savedY);
                     return;

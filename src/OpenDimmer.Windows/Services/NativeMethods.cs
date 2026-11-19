@@ -6,11 +6,30 @@ namespace OpenDimmer.Services
     internal static class NativeMethods
     {
         public const int GWL_EXSTYLE = -20;
+        public const int WS_POPUP = unchecked((int)0x80000000);
+        public const int WS_DISABLED = 0x08000000;
         public const int WS_EX_TOPMOST = 0x00000008;
         public const int WS_EX_TRANSPARENT = 0x00000020;
         public const int WS_EX_TOOLWINDOW = 0x00000080;
         public const int WS_EX_LAYERED = 0x00080000;
         public const int WS_EX_NOACTIVATE = 0x08000000;
+
+        public const uint LWA_COLORKEY = 0x00000001;
+        public const uint LWA_ALPHA = 0x00000002;
+
+        public const uint WDA_NONE = 0x00000000;
+        public const uint WDA_EXCLUDEFROMCAPTURE = 0x00000011;
+
+        public const int SW_HIDE = 0;
+        public const int SW_SHOWNOACTIVATE = 4;
+
+        public const int WM_PAINT = 0x000F;
+        public const int WM_ERASEBKGND = 0x0014;
+        public const int WM_MOUSEACTIVATE = 0x0021;
+        public const int WM_NCHITTEST = 0x0084;
+        public const int WM_DPICHANGED = 0x02E0;
+        public const int MA_NOACTIVATE = 3;
+        public const int HTTRANSPARENT = -1;
 
         public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
         public const uint SWP_NOSIZE = 0x0001;
@@ -39,6 +58,18 @@ namespace OpenDimmer.Services
             public int top;
             public int right;
             public int bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct PAINTSTRUCT
+        {
+            public IntPtr hdc;
+            public bool fErase;
+            public RECT rcPaint;
+            public bool fRestore;
+            public bool fIncUpdate;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+            public byte[] rgbReserved;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -88,6 +119,34 @@ namespace OpenDimmer.Services
             int cy,
             uint uFlags);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool SetLayeredWindowAttributes(
+            IntPtr hwnd,
+            uint crKey,
+            byte bAlpha,
+            uint dwFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
+
+        [DllImport("user32.dll")]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        public static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr BeginPaint(IntPtr hWnd, out PAINTSTRUCT lpPaint);
+
+        [DllImport("user32.dll")]
+        public static extern bool EndPaint(IntPtr hWnd, ref PAINTSTRUCT lpPaint);
+
+        [DllImport("user32.dll")]
+        public static extern int FillRect(IntPtr hDC, ref RECT lprc, IntPtr hbr);
+
+        [DllImport("user32.dll")]
+        public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern bool SetProp(IntPtr hWnd, string lpString, IntPtr hData);
 
@@ -114,7 +173,16 @@ namespace OpenDimmer.Services
         public static extern bool DeleteDC(IntPtr hdc);
 
         [DllImport("gdi32.dll")]
+        public static extern bool GetDeviceGammaRamp(IntPtr hDC, ref RAMP lpRamp);
+
+        [DllImport("gdi32.dll")]
         public static extern bool SetDeviceGammaRamp(IntPtr hDC, ref RAMP lpRamp);
+
+        [DllImport("gdi32.dll")]
+        public static extern IntPtr CreateSolidBrush(uint color);
+
+        [DllImport("gdi32.dll")]
+        public static extern bool DeleteObject(IntPtr hObject);
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool DestroyIcon(IntPtr hIcon);

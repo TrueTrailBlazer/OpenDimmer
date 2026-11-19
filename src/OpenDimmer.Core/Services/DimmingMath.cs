@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using OpenDimmer.Models;
 
@@ -280,12 +281,117 @@ namespace OpenDimmer.Services
                 if (settings.ShowIds) count++;
                 if (settings.ShowBoundaries) count++;
                 if (settings.UseHardwareGamma) count++;
+                if (settings.ExcludeFromCapture) count++;
                 if (settings.AvoidTaskbarAutoHideLock) count++;
                 if (settings.NonDimmableWindow) count++;
                 if (settings.MovableWindow) count++;
             }
 
             return count;
+        }
+
+        public static void ComputeOverlayColorAndAlpha(
+            bool enabled,
+            int dimPercent,
+            string hexTint,
+            int tintIntensity,
+            int maxCap,
+            out byte r,
+            out byte g,
+            out byte b,
+            out byte alpha)
+        {
+            r = 0;
+            g = 0;
+            b = 0;
+            alpha = 0;
+
+            if (!enabled)
+            {
+                return;
+            }
+
+            int clampedDim = ClampDimPercent(dimPercent, maxCap);
+            if (clampedDim <= 0)
+            {
+                return;
+            }
+
+            double clampedIntensity = ClampTintIntensity(tintIntensity) / 100.0;
+            if (!string.IsNullOrEmpty(hexTint))
+            {
+                string trimmed = hexTint.Trim();
+                if (trimmed.Length == 6 && !string.Equals(trimmed, "000000", StringComparison.OrdinalIgnoreCase))
+                {
+                    byte baseR, baseG, baseB;
+                    if (byte.TryParse(trimmed.Substring(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out baseR)
+                        && byte.TryParse(trimmed.Substring(2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out baseG)
+                        && byte.TryParse(trimmed.Substring(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out baseB))
+                    {
+                        double scale = clampedIntensity * 1.4;
+                        r = (byte)Math.Max(0, Math.Min(255, (int)(baseR * scale)));
+                        g = (byte)Math.Max(0, Math.Min(255, (int)(baseG * scale)));
+                        b = (byte)Math.Max(0, Math.Min(255, (int)(baseB * scale)));
+                    }
+                }
+            }
+
+            alpha = (byte)Math.Max(0, Math.Min(255, (int)Math.Round((clampedDim / 100.0) * 255.0)));
+        }
+
+        public static uint ToWin32ColorRef(byte r, byte g, byte b)
+        {
+            return (uint)(r | (g << 8) | (b << 16));
+        }
+
+        public static int GetNextMaxDimCap(int currentCap)
+        {
+            int[] caps = new int[] { 80, 85, 90, 95 };
+            for (int i = 0; i < caps.Length; i++)
+            {
+                if (caps[i] == currentCap)
+                {
+                    return caps[(i + 1) % caps.Length];
+                }
+            }
+            return 90;
+        }
+
+        public static bool IsWindowVisibleOnMonitors(
+            double left,
+            double top,
+            double width,
+            double height,
+            IList<MonitorDescriptor> monitors)
+        {
+            if (monitors == null || monitors.Count == 0)
+            {
+                return true;
+            }
+
+            if (double.IsNaN(left) || double.IsNaN(top) || double.IsNaN(width) || double.IsNaN(height)
+                || width <= 0.0 || height <= 0.0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < monitors.Count; i++)
+            {
+                MonitorDescriptor m = monitors[i];
+                if (m.Width <= 0 || m.Height <= 0)
+                {
+                    continue;
+                }
+
+                double overlapX = Math.Min(left + width, m.X + m.Width) - Math.Max(left, (double)m.X);
+                double overlapY = Math.Min(top + height, m.Y + m.Height) - Math.Max(top, (double)m.Y);
+                if (overlapX >= 40.0 && overlapY >= 40.0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

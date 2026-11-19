@@ -108,6 +108,10 @@ namespace OpenDimmer.Linux
                 nightItem.Click += (_, _) => mainWindow.TriggerNightSyncFromTray();
                 menu.Items.Add(nightItem);
 
+                var safeOffItem = new NativeMenuItem("Disable Dimming (Safe Off)");
+                safeOffItem.Click += (_, _) => mainWindow.SafeOffFromTray();
+                menu.Items.Add(safeOffItem);
+
                 var reloadItem = new NativeMenuItem("Reload Displays");
                 reloadItem.Click += (_, _) => mainWindow.ReloadDisplays();
                 menu.Items.Add(reloadItem);
