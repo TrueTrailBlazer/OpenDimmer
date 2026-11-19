@@ -23,7 +23,15 @@
 | **Windows 10 / 11** | [`OpenDimmer-win-portable.exe`](https://github.com/TrueTrailBlazer/OpenDimmer/releases/latest/download/OpenDimmer-win-portable.exe) | `~200 KB` portable (uses built-in `.NET Framework 4.7.2`, zero install) | Download and run `OpenDimmer-win-portable.exe`. |
 | **Linux (X11 / XRandR)** | [`OpenDimmer-linux-x64.tar.gz`](https://github.com/TrueTrailBlazer/OpenDimmer/releases/latest/download/OpenDimmer-linux-x64.tar.gz) | Self-contained single-file binary (`.NET 8 + Avalonia UI`) | Extract (`tar -xzf OpenDimmer-linux-x64.tar.gz`) and run `./OpenDimmer`. |
 
-> **Note for Windows Users (SmartScreen):** Because OpenDimmer is a free, community-built open-source project without a paid commercial code-signing certificate yet, Windows SmartScreen may display an *"Unrecognized app"* prompt on first launch. Click **More info → Run anyway** (every release binary is compiled automatically by GitHub Actions directly from this public repository, with `SHA256SUMS.txt` attached).
+### Is OpenDimmer Safe? (About the Windows SmartScreen Prompt)
+
+When opening `OpenDimmer-win-portable.exe` for the first time on Windows, you may see a blue **"Windows protected your PC"** (*Microsoft Defender SmartScreen*) window. **This does not mean a virus or threat was detected:**
+
+- **Why the prompt appears:** Windows automatically displays this message for any new independent application whose developer has not purchased a paid commercial Code Signing certificate (which costs hundreds of dollars per year).
+- **100% Open Source & Auditable:** Every single line of code is public in this repository, with zero obfuscation, zero installers, and zero hidden background services.
+- **100% Offline & Zero Telemetry:** OpenDimmer never connects to the internet, collects no data, and only saves your display settings in a readable `OpenDimmer.json` file.
+- **Built Transparently by GitHub:** Every official executable in [Releases](https://github.com/TrueTrailBlazer/OpenDimmer/releases) is compiled automatically on GitHub's own servers via [GitHub Actions](https://github.com/TrueTrailBlazer/OpenDimmer/actions) directly from the public source code (with verifiable SHA-256 checksums in `SHA256SUMS.txt`)—not uploaded from a private computer.
+- **How to open on first launch:** Click **More info** → **Run anyway** (Windows will remember your choice and won't ask again). Or, if you prefer, you can inspect the `.cs` files and compile your own executable locally in 1 second by running `.\build.ps1`.
 
 ---
 
