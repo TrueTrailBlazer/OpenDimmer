@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace OpenDimmer.Models
@@ -57,6 +56,8 @@ namespace OpenDimmer.Models
         public bool ShowInTaskbar { get; set; }
         public bool UseHardwareGamma { get; set; }
         public bool AvoidTaskbarAutoHideLock { get; set; }
+        public bool ExcludeFromCapture { get; set; }
+        public int MaxDimPercent { get; set; }
         public MasterSettings Master { get; set; }
         public List<ScreenSettings> Screens { get; set; }
         public string LastRun { get; set; }
@@ -70,6 +71,8 @@ namespace OpenDimmer.Models
             ShowInTaskbar = true;
             UseHardwareGamma = false;
             AvoidTaskbarAutoHideLock = true;
+            ExcludeFromCapture = true;
+            MaxDimPercent = 90;
             Master = new MasterSettings();
             Screens = new List<ScreenSettings>();
             LastRun = string.Empty;

@@ -46,8 +46,25 @@
     <Reference Include="System.Xaml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\OpenDimmer.Core\Models\AppSettings.cs">
+      <Link>Core\Models\AppSettings.cs</Link>
+    </Compile>
+    <Compile Include="..\OpenDimmer.Core\Models\MonitorDescriptor.cs">
+      <Link>Core\Models\MonitorDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\OpenDimmer.Core\Services\DimmingMath.cs">
+      <Link>Core\Services\DimmingMath.cs</Link>
+    </Compile>
+    <Compile Include="..\OpenDimmer.Core\Services\EdidParser.cs">
+      <Link>Core\Services\EdidParser.cs</Link>
+    </Compile>
+    <Compile Include="..\OpenDimmer.Core\Services\JsonFormatter.cs">
+      <Link>Core\Services\JsonFormatter.cs</Link>
+    </Compile>
+    <Compile Include="..\OpenDimmer.Core\Services\SettingsStore.cs">
+      <Link>Core\Services\SettingsStore.cs</Link>
+    </Compile>
     <Compile Include="Program.cs" />
-    <Compile Include="Models\AppSettings.cs" />
     <Compile Include="Services\NativeMethods.cs" />
     <Compile Include="Services\AutoRunService.cs" />
     <Compile Include="Services\DisplayInfoService.cs" />

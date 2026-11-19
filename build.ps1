@@ -1,7 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$srcDir = Join-Path $root "src\OpenDimmer"
+$coreDir = Join-Path $root "src\OpenDimmer.Core"
+$winDir = Join-Path $root "src\OpenDimmer.Windows"
 $distDir = Join-Path $root "dist"
 
 if (-not (Test-Path $distDir)) {
@@ -12,12 +13,19 @@ $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $fwDir = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319"
 $wpfDir = Join-Path $fwDir "WPF"
 
-$sources = Get-ChildItem -Path $srcDir -Filter "*.cs" -Recurse | Select-Object -ExpandProperty FullName
-$manifest = Join-Path $srcDir "app.manifest"
+$coreSources = Get-ChildItem -Path $coreDir -Filter "*.cs" -Recurse |
+    Where-Object { $_.FullName -notmatch "\\(obj|bin)\\" } |
+    Select-Object -ExpandProperty FullName
+$winSources = Get-ChildItem -Path $winDir -Filter "*.cs" -Recurse |
+    Where-Object { $_.FullName -notmatch "\\(obj|bin)\\" } |
+    Select-Object -ExpandProperty FullName
+$sources = @($coreSources) + @($winSources)
+
+$manifest = Join-Path $winDir "app.manifest"
 $icoFile = Join-Path $root "assets\app.ico"
 $outExe = Join-Path $distDir "OpenDimmer.exe"
 
-Write-Host "Compiling OpenDimmer..." -ForegroundColor Cyan
+Write-Host "Compiling OpenDimmer (Windows + Core)..." -ForegroundColor Cyan
 
 & $csc /nologo /target:winexe /optimize+ `
     /out:$outExe `

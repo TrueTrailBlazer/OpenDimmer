@@ -1,0 +1,94 @@
+name: Build & Release OpenDimmer
+
+on:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Build & Test Linux (x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run OpenDimmer.Core unit tests
+        run: dotnet test tests/OpenDimmer.Core.Tests/OpenDimmer.Core.Tests.csproj -c Release
+
+      - name: Publish Linux single-file binary
+        run: |
+          dotnet publish src/OpenDimmer.Linux/OpenDimmer.Linux.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -o dist/linux-x64
+
+          mkdir -p dist/release
+          tar -C dist/linux-x64 -czf dist/release/OpenDimmer-linux-x64.tar.gz OpenDimmer
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opendimmer-linux-x64
+          path: dist/release/OpenDimmer-linux-x64.tar.gz
+
+  build-windows:
+    name: Build Windows Portable (.exe)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build OpenDimmer.exe via .NET Framework 4.7.2 compiler
+        shell: powershell
+        run: |
+          & .\build.ps1
+          if (-not (Test-Path .\dist\OpenDimmer.exe)) {
+            throw "Expected dist\OpenDimmer.exe was not generated."
+          }
+          New-Item -ItemType Directory -Force -Path .\dist\release | Out-Null
+          Copy-Item .\dist\OpenDimmer.exe .\dist\release\OpenDimmer-win-portable.exe
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opendimmer-win-portable
+          path: dist/release/OpenDimmer-win-portable.exe
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-linux, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate SHA256SUMS and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release-files
+          cp artifacts/opendimmer-win-portable/OpenDimmer-win-portable.exe release-files/
+          cp artifacts/opendimmer-linux-x64/OpenDimmer-linux-x64.tar.gz release-files/
+          (cd release-files && sha256sum OpenDimmer-win-portable.exe OpenDimmer-linux-x64.tar.gz > SHA256SUMS.txt)
+
+          gh release create "${GITHUB_REF_NAME}" release-files/* \
+            --title "OpenDimmer ${GITHUB_REF_NAME}" \
+            --generate-notes
