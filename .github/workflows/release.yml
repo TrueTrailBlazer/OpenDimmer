@@ -90,5 +90,6 @@ jobs:
           (cd release-files && sha256sum OpenDimmer-win-portable.exe OpenDimmer-linux-x64.tar.gz > SHA256SUMS.txt)
 
           gh release create "${GITHUB_REF_NAME}" release-files/* \
+            --repo "${GITHUB_REPOSITORY}" \
             --title "OpenDimmer ${GITHUB_REF_NAME}" \
             --generate-notes
