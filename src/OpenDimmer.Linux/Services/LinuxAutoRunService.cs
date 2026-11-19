@@ -46,7 +46,7 @@ namespace OpenDimmer.Linux.Services
                 string execLine;
                 if (Path.GetFileName(exe).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
                 {
-                    string dllPath = typeof(LinuxAutoRunService).Assembly.Location;
+                    string dllPath = Path.Combine(AppContext.BaseDirectory, "OpenDimmer.dll");
                     execLine = $"\"{exe}\" \"{dllPath}\"";
                 }
                 else

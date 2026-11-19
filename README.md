@@ -5,8 +5,25 @@
 <h1 align="center">OpenDimmer</h1>
 
 <p align="center">
-  <strong>Lightweight, portable, open-source multi-monitor brightness &amp; Night Light (warm tint) controller for Windows 10/11.</strong>
+  <strong>Lightweight, portable, open-source multi-monitor brightness &amp; Night Light (warm tint) controller for Windows 10/11 and Linux (X11/XRandR).</strong>
 </p>
+
+<p align="center">
+  <a href="https://github.com/TrueTrailBlazer/OpenDimmer/releases/latest"><strong>Latest Release</strong></a> •
+  <a href="https://github.com/TrueTrailBlazer/OpenDimmer/releases/latest/download/OpenDimmer-win-portable.exe"><strong>Download for Windows (.exe)</strong></a> •
+  <a href="https://github.com/TrueTrailBlazer/OpenDimmer/releases/latest/download/OpenDimmer-linux-x64.tar.gz"><strong>Download for Linux (x64)</strong></a>
+</p>
+
+---
+
+## Download & Quick Start
+
+| Platform | Package | Size & Runtime | How to Run |
+| :--- | :--- | :--- | :--- |
+| **Windows 10 / 11** | [`OpenDimmer-win-portable.exe`](https://github.com/TrueTrailBlazer/OpenDimmer/releases/latest/download/OpenDimmer-win-portable.exe) | `~200 KB` portable (uses built-in `.NET Framework 4.7.2`, zero install) | Download and run `OpenDimmer-win-portable.exe`. |
+| **Linux (X11 / XRandR)** | [`OpenDimmer-linux-x64.tar.gz`](https://github.com/TrueTrailBlazer/OpenDimmer/releases/latest/download/OpenDimmer-linux-x64.tar.gz) | Self-contained single-file binary (`.NET 8 + Avalonia UI`) | Extract (`tar -xzf OpenDimmer-linux-x64.tar.gz`) and run `./OpenDimmer`. |
+
+> **Note for Windows Users (SmartScreen):** Because OpenDimmer is a free, community-built open-source project without a paid commercial code-signing certificate yet, Windows SmartScreen may display an *"Unrecognized app"* prompt on first launch. Click **More info → Run anyway** (every release binary is compiled automatically by GitHub Actions directly from this public repository, with `SHA256SUMS.txt` attached).
 
 ---
 
@@ -21,26 +38,28 @@ For years, the classic freeware utility **Dimmer** (by Nelson Pires) was a popul
 4. **Stacked Black Screens:** Launching the executable a second time while minimized in the tray spawned duplicate instances, stacking opacity and turning screens pitch black.
 5. **Auto-Hide Taskbar Lock:** Fullscreen topmost overlays blocked the 1-pixel bottom edge trigger required for Windows auto-hidden taskbars to pop up.
 
-**OpenDimmer** was born out of the need to solve all of these multi-monitor limitations definitively while providing a modern, polished dark-mode mixer interface.
+**OpenDimmer** was born out of the need to solve all of these multi-monitor limitations definitively while providing a modern, polished dark-mode mixer interface across **Windows** and **Linux**.
 
 ---
 
 ## Clean-Room Implementation & Inspiration
 
-- **100% Original Code (Zero Copied Code):** OpenDimmer is a **clean-room implementation written from scratch** in C# / WPF (.NET Framework 4.7.2+). No source code, XAML/BAML resources, or binaries from the original *Dimmer* were copied or reused.
-- **Inspiration:** We credit and thank Nelson Pires' original *Dimmer* for inspiring the compact vertical multi-monitor slider concept, which we re-imagined with a modern hardware mixer UI, native Win32 event hooks, EDID monitor detection, and color temperature controls.
+- **100% Original Code (Zero Copied Code):** OpenDimmer is a **clean-room implementation written from scratch** in C#. No source code, XAML/BAML resources, or binaries from the original *Dimmer* were copied or reused.
+- **Inspiration:** We credit and thank Nelson Pires' original *Dimmer* for inspiring the compact vertical multi-monitor slider concept, which we re-imagined with a modern hardware mixer UI, native Win32 & X11/XRandR backends, EDID monitor detection, and color temperature controls.
 
 ---
 
 ## Key Features
 
-- **Persistent Z-Order Overlay Protection (`WinEventHook` + `SWP_NOACTIVATE`):** Actively monitors window foreground and popup creation events (`EVENT_SYSTEM_FOREGROUND` & `EVENT_OBJECT_SHOW`) to keep dimming overlays above opened photos, notifications, and popups without ever stealing keyboard/mouse focus.
-- **EDID Hardware Monitor Detection:** Automatically reads the real manufacturer/model name of each display (e.g., *LG Ultrawide*, *Notebook Display*) and connection type (*HDMI*, *DP*, *eDP*) directly from hardware EDID registry descriptors.
+- **Dual-OS Native Architecture (`OpenDimmer.Core`):** Shared business logic with dedicated native frontends—a tiny `~200 KB` **WPF + Win32** executable on Windows and a native **Avalonia UI + X11/XRandR** application on Linux.
+- **Persistent Z-Order Overlay Protection on Windows (`WinEventHook` + `SWP_NOACTIVATE`):** Actively monitors window foreground and popup creation events (`EVENT_SYSTEM_FOREGROUND` & `EVENT_OBJECT_SHOW`) to keep dimming overlays above opened photos, notifications, and popups without ever stealing keyboard/mouse focus.
+- **Native Hardware CRTC Gamma on Linux (`libXrandr`):** Uses `XRRSetCrtcGamma` per monitor (supporting 8-bit 256-entry and 10-bit 1024-entry LUTs), preserving and restoring each display's original calibrated LUT on exit.
+- **EDID Hardware Monitor Detection:** Automatically reads the real manufacturer/model name of each display (e.g., *LG Ultrawide*, *Notebook Display*) and connection port (*HDMI*, *DP*, *eDP*) directly from Windows Registry EDID descriptors or Linux `/sys/class/drm/card*-*/edid`.
 - **Per-Monitor Color Filter & Night Light (`Tint`):** Choose between **Neutral Black (`6500K`)**, **Warm Amber (`4500K`)**, **Deep Ember (`2200K`)**, and **Soft Sepia (`3200K`)** with adjustable warmth intensity per monitor—or toggle all displays at once using **Night Sync**.
-- **Hybrid Hardware Gamma Mode (`SetDeviceGammaRamp`):** Optional hardware LUT gamma dimming that also darkens the Windows Start Menu, Taskbar, system popups, and hardware mouse cursor.
-- **Dynamic Sleep & Display Hotplug Recovery:** Listens to `SystemEvents.DisplaySettingsChanged` and `SystemEvents.PowerModeChanged` to realign overlays automatically when docking/undocking monitors—saving settings non-destructively by hardware `DeviceName`.
-- **Auto-Hide Taskbar Compatibility:** Detects `ABS_AUTOHIDE` via `SHAppBarMessage` and preserves a 1px trigger edge so auto-hidden taskbars always slide up smoothly.
-- **True Single-Instance Guard:** Uses a global `Mutex` and `EventWaitHandle` IPC wakeup so launching `OpenDimmer.exe` again wakes the existing tray instance instead of stacking dark overlays.
+- **Hybrid Hardware Gamma Mode on Windows (`SetDeviceGammaRamp`):** Optional hardware LUT gamma dimming that also darkens the Windows Start Menu, Taskbar, system popups, and hardware mouse cursor.
+- **Dynamic Sleep & Display Hotplug Recovery:** Realigns monitors non-destructively by hardware `DeviceName` without wiping disconnected monitor settings.
+- **Auto-Hide Taskbar Compatibility (Windows):** Detects `ABS_AUTOHIDE` via `SHAppBarMessage` and preserves a 1px trigger edge so auto-hidden taskbars always slide up smoothly.
+- **True Single-Instance Guard:** Uses a global `Mutex` + `EventWaitHandle` on Windows and a Unix Domain Socket on Linux so launching OpenDimmer again wakes the existing tray instance instead of stacking dark overlays.
 
 ---
 
@@ -48,42 +67,47 @@ For years, the classic freeware utility **Dimmer** (by Nelson Pires) was a popul
 
 ```text
 OpenDimmer/
+├── .github/workflows/release.yml     # Automated Windows + Linux build, test & release pipeline
 ├── assets/
 │   ├── app.ico                       # Multi-resolution Windows executable & tray icon (16–256px)
 │   └── icon.png                      # High-resolution OpenDimmer application icon (1024px)
-├── build.ps1                         # Zero-dependency build script (uses native Windows .NET 4 compiler)
+├── build.ps1                         # Zero-dependency Windows build script (.NET 4.7.2 csc.exe)
+├── run-linux.sh                      # Quick Linux launch script (.NET 8 + Avalonia + X11)
 ├── DESIGN.md                         # UI/UX design system specification
-├── OpenDimmer.sln                    # Visual Studio Solution
-└── src/
-    └── OpenDimmer/
-        ├── OpenDimmer.csproj
-        ├── app.manifest              # PerMonitorV2 DPI manifest
-        ├── Program.cs                # Single-instance entry point & IPC wakeup
-        ├── Models/
-        │   └── AppSettings.cs        # Portable JSON configuration models
-        ├── Services/
-        │   ├── NativeMethods.cs      # Win32 P/Invoke (Z-Order, WinEventHook, Gamma, AppBar)
-        │   ├── AutoRunService.cs     # Windows startup registry integration
-        │   ├── DisplayInfoService.cs # EDID & Win32 hardware monitor name detection
-        │   ├── GammaService.cs       # Per-monitor hardware LUT gamma & warm tint
-        │   ├── SettingsService.cs    # Non-destructive pretty-printed JSON persistence
-        │   └── OverlayManager.cs     # Multi-monitor overlay lifecycle & Z-Order protection
-        └── UI/
-            ├── OverlayWindow.cs      # Click-through per-monitor dimming & warmth surface
-            └── MainWindow.cs         # Modern dark mixer UI, custom Tint popup & system tray
+├── OpenDimmer.sln                    # Visual Studio / .NET Solution
+├── src/
+│   ├── OpenDimmer.Core/              # Shared cross-platform core (Models, DimmingMath, EdidParser, SettingsStore)
+│   ├── OpenDimmer.Windows/           # Windows 10/11 target (WPF, Win32 overlay, GammaService, EDID registry)
+│   └── OpenDimmer.Linux/             # Linux target (.NET 8, Avalonia UI, libX11/libXrandr, DRM EDID)
+└── tests/
+    └── OpenDimmer.Core.Tests/        # xUnit automated test suite for OpenDimmer.Core
 ```
 
 ---
 
 ## Building from Source
 
-You can compile **OpenDimmer** on any Windows 10/11 machine without installing external SDKs:
+### Windows 10 / 11 (Zero External SDKs Required)
+
+You can compile the standalone `~200 KB` portable executable on any Windows 10/11 machine using the built-in .NET Framework compiler:
 
 ```powershell
 .\build.ps1
 ```
 
-The standalone portable executable (~200 KB, including multi-resolution icons) will be generated in `dist\OpenDimmer.exe`.
+The executable will be generated in `dist\OpenDimmer.exe`.
+
+### Linux (Ubuntu / Debian / KDE / XFCE / X11)
+
+Requires `.NET 8 SDK` and standard X11 libraries (`libX11.so.6`, `libXrandr.so.2`):
+
+```bash
+# Run unit tests
+dotnet test tests/OpenDimmer.Core.Tests/OpenDimmer.Core.Tests.csproj -c Release
+
+# Launch OpenDimmer natively on X11
+./run-linux.sh
+```
 
 ---
 
